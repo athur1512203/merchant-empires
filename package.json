@@ -8,11 +8,13 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "server:dev": "tsx watch server/src/index.ts",
-    "server:start": "tsx server/src/index.ts",
+    "server:start": "node server/dist/index.mjs",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p server/tsconfig.json",
     "db:generate": "prisma generate --schema server/prisma/schema.prisma",
     "db:migrate": "node --env-file=server/.env node_modules/prisma/build/index.js migrate deploy --schema server/prisma/schema.prisma",
-    "test:neon": "node server/tests/run-neon-tests.mjs"
+    "test:neon": "node server/tests/run-neon-tests.mjs",
+    "server:build": "tsc -p server/tsconfig.build.json && node server/build.mjs",
+    "verify:render": "node scripts/verify-render-clean.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -36,6 +38,7 @@
     "@types/react-dom": "latest",
     "@types/supertest": "^7.2.1",
     "autoprefixer": "latest",
+    "esbuild": "^0.28.2",
     "postcss": "latest",
     "prisma": "^6.19.3",
     "supertest": "^7.3.1",
@@ -43,5 +46,11 @@
     "tsx": "^4.23.15",
     "typescript": "latest",
     "vitest": "latest"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "prisma": {
+    "schema": "server/prisma/schema.prisma"
   }
 }

@@ -2,13 +2,16 @@ services:
   - type: web
     name: merchant-empires-api
     runtime: node
+    rootDir: .
+    branch: main
+    autoDeployTrigger: "off"
     numInstances: 1
-    buildCommand: npm ci --include=dev && npm run db:generate && npm run typecheck
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run server:build
     startCommand: npm run server:start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 24
+        value: "24.21.0"
       - key: NODE_ENV
         value: production
       - key: HOST

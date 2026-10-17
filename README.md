@@ -2,6 +2,8 @@
 
 Production preparation: [Render + Vercel configuration and environment setup](DEPLOYMENT.md).
 
+Task 06C: [Render audit, clean build verification and exact dashboard commands](server/TASK_06C_REPORT.md). Backend production: `npm run db:generate`, `npm run server:build`, `npm run server:start`; frontend uses `npm run build` separately.
+
 Task 06A backend/database: [Windows setup, API và kiến trúc](server/README.md), [báo cáo kiểm thử và phạm vi](server/TASK_06A_REPORT.md).
 
 Task 06B: [Multiplayer realtime, kiểm thử bốn tab, reconnect và hướng dẫn Windows](server/TASK_06B_REPORT.md).

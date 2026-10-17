@@ -5,12 +5,16 @@ import {PrismaRoomRepository} from './prismaRepository';
 import {RoomService} from './service';
 import {createServer} from 'node:http';
 import {attachRealtime} from './realtime';
-config({path:'server/.env'});
+config({path:'server/.env',quiet:true});
 if(!process.env.DATABASE_URL)throw new Error('DATABASE_URL is required (server/.env)');
+if(process.env.NODE_ENV==='production'&&!process.env.FRONTEND_ORIGIN)throw new Error('FRONTEND_ORIGIN is required in production');
 const db=new PrismaClient();
 await db.$connect();
 const service=new RoomService(new PrismaRoomRepository(db));
 const server=createServer(createApp(service));
 const realtime=attachRealtime(server,service);
-server.listen(Number(process.env.PORT??3001),process.env.HOST??'127.0.0.1',()=>console.log('Merchant Empires API ready'));
+server.listen(Number(process.env.PORT??3001),process.env.HOST??(process.env.NODE_ENV==='production'?'0.0.0.0':'127.0.0.1'),()=>{
+  const address=server.address();
+  console.log(`Merchant Empires API ready port=${typeof address==='object'&&address?address.port:'unknown'}`);
+});
 for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{realtime.close();server.close(()=>{void db.$disconnect().then(()=>process.exit(0))})});

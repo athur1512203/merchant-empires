@@ -12,3 +12,4 @@ coverage/
 server/neon-verification.json
 server/multiplayer-*.png
 server/*.txt
+.render-verification/

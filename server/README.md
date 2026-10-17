@@ -1,5 +1,7 @@
 # Merchant Empires — Task 06A
 
+**Task 06C deployment update:** production now runs compiled JavaScript (`npm run server:build` then `npm run server:start`), not tsx. Render must use repository root and the dedicated backend build. See [audit and exact Render settings](TASK_06C_REPORT.md). Older Task 06A/06B production-start descriptions below are historical; local `server:dev` is unchanged.
+
 **Task 06B đã triển khai:** frontend hiện dùng multiplayer Socket.IO. Xem [kiến trúc realtime, kết quả kiểm thử và hướng dẫn Windows](TASK_06B_REPORT.md). Các đoạn mô tả frontend local và “còn lại Task 06B” dưới đây là lịch sử Task 06A; API/database nền tảng vẫn áp dụng.
 
 ## Kiến trúc
