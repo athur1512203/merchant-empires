@@ -1,0 +1,14 @@
+export type Resource='metal'|'wood'|'wheat'|'cotton';
+export type Hex={id:string;q:number;r:number;x:number;y:number;resource:Resource;number:number};
+export type Vertex={id:string;x:number;y:number;hexIds:string[]};
+export type Edge={id:string;a:string;b:string;x1:number;y1:number;x2:number;y2:number};
+export type Building={vertexId:string;playerId:number;type:'settlement';level:1|2|3};
+export type Product='machinery'|'rail'|'furniture'|'flour'|'fabric'|'clothing';
+export type Commodity=Resource|Product;
+export type Factory={vertexId:string;playerId:number;level:1|2|3;usedCapacity:number};
+export type Player={id:number;name:string;color:string;cash:number;revenue:number;costs:number;operatingCosts:number;capitalExpenditure:number;loans:number;outstandingPenalty:number;profit:number;resources:Record<Resource,number>;products:Record<Product,number>;inventoryCost:Record<Commodity,number>};
+export type Log={id:number;text:string;kind:'dice'|'resource'|'build'|'turn'|'event'};
+export type Bid={playerId:number;amount:number;order:number};
+export type Contract={id:string;name:string;product:Product;quantity:number;budget:number;deadlineRound:number;status:'announced'|'open'|'awarded'|'delivered'|'failed';winnerId?:number;winningBid?:number;bids:Bid[]};
+export type PriceChange={round:number;resource:Resource;from:number;to:number;percent:number};
+export type Trade={id:number;round:number;playerId:number;item:Commodity;amount:number;unitPrice:number;revenue:number;cogs:number};

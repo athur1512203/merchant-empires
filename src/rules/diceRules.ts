@@ -1,0 +1,6 @@
+import type {Rng} from './rng';
+import type {ActionResult,GameState} from './types';
+import {applyResourceProduction,calculateResourceProduction} from './productionRules';
+export function getDiceTotal(dice1:number,dice2:number){return dice1+dice2}
+export function canRollDice(state:GameState,playerId:number){if(state.phase==='finished')return{ok:false as const,error:'Trận đấu đã kết thúc.'};if(state.phase!=='playing')return{ok:false as const,error:'Chỉ được gieo khi trận đấu đang diễn ra.'};if(state.auction.status==='open')return{ok:false as const,error:'Hãy hoàn tất phiên đấu thầu trước.'};if(state.seats[state.turnIndex]!==playerId)return{ok:false as const,error:'Chưa đến lượt gieo xúc xắc của bạn.'};if(state.rolled)return{ok:false as const,error:'Bạn đã gieo xúc xắc trong lượt này.'};return{ok:true as const}}
+export function rollDice(state:GameState,playerId:number,rng:Rng):ActionResult{const check=canRollDice(state,playerId);if(!check.ok)return check;const dice:[number,number]=[Math.floor(rng()*6)+1,Math.floor(rng()*6)+1],total=getDiceTotal(...dice),production=calculateResourceProduction(state,total),next=applyResourceProduction(state,production);return{ok:true,state:{...next,dice,rolled:true},message:`Đã gieo ${dice[0]} và ${dice[1]}, tổng ${total}.`}}

@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum RoomStatus {
+  WAITING
+  PLAYING
+  FINISHED
+}
+model GameRoom {
+  id String @id @default(uuid())
+  roomCode String @unique
+  hostPlayerId String @unique
+  status RoomStatus @default(WAITING)
+  maxPlayers Int @default(4)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  players RoomPlayer[] @relation("Membership")
+  host RoomPlayer @relation("Host", fields: [id, hostPlayerId], references: [roomId, id], onDelete: NoAction, onUpdate: NoAction)
+  snapshot GameSnapshot?
+  actions GameAction[]
+  bids AuctionBid[]
+  @@unique([id, hostPlayerId])
+}
+model RoomPlayer {
+  id String @id @default(uuid())
+  roomId String
+  displayName String
+  companyId Int
+  seatIndex Int
+  reconnectTokenHash String @unique
+  joinedAt DateTime @default(now())
+  room GameRoom @relation("Membership", fields: [roomId], references: [id], onDelete: Cascade)
+  hostedRoom GameRoom? @relation("Host")
+  actions GameAction[]
+  bids AuctionBid[]
+  @@unique([roomId, id])
+  @@unique([roomId, companyId])
+  @@unique([roomId, seatIndex])
+}
+model GameSnapshot {
+  id String @id @default(uuid())
+  roomId String @unique
+  version Int @default(0)
+  state Json @db.JsonB
+  updatedAt DateTime @updatedAt
+  room GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+model GameAction {
+  id String @id @default(uuid())
+  roomId String
+  playerId String
+  actionType String
+  payload Json @db.JsonB
+  idempotencyKey String
+  requestHash String
+  stateVersion Int
+  createdAt DateTime @default(now())
+  room GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  player RoomPlayer @relation(fields: [roomId, playerId], references: [roomId, id], onDelete: NoAction)
+  @@unique([roomId, playerId, idempotencyKey])
+  @@unique([roomId, stateVersion])
+}
+model AuctionBid {
+  id String @id @default(uuid())
+  roomId String
+  auctionId String
+  playerId String
+  amount Int
+  submittedAt DateTime @default(now())
+  room GameRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  player RoomPlayer @relation(fields: [roomId, playerId], references: [roomId, id], onDelete: NoAction)
+  @@unique([roomId, auctionId, playerId])
+}

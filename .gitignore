@@ -1,0 +1,14 @@
+node_modules/
+dist/
+server/dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.openai/
+.vercel/
+coverage/
+*.log
+server/neon-verification.json
+server/multiplayer-*.png
+server/*.txt

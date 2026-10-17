@@ -1,0 +1,16 @@
+import {config} from 'dotenv';
+import {PrismaClient} from '@prisma/client';
+import {createApp} from './app';
+import {PrismaRoomRepository} from './prismaRepository';
+import {RoomService} from './service';
+import {createServer} from 'node:http';
+import {attachRealtime} from './realtime';
+config({path:'server/.env'});
+if(!process.env.DATABASE_URL)throw new Error('DATABASE_URL is required (server/.env)');
+const db=new PrismaClient();
+await db.$connect();
+const service=new RoomService(new PrismaRoomRepository(db));
+const server=createServer(createApp(service));
+const realtime=attachRealtime(server,service);
+server.listen(Number(process.env.PORT??3001),process.env.HOST??'127.0.0.1',()=>console.log('Merchant Empires API ready'));
+for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{realtime.close();server.close(()=>{void db.$disconnect().then(()=>process.exit(0))})});
