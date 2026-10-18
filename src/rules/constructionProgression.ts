@@ -1,12 +1,12 @@
 import {CONSTRUCTION_COSTS,FACTORY_COSTS,type ConstructionCost} from './economyConfig';
 import type {GameAction,GameState} from './types';
-export type ConstructionStep={label:string;cost:ConstructionCost;type:'BUILD_SETTLEMENT'|'UPGRADE_SETTLEMENT'|'BUILD_FACTORY'|'UPGRADE_FACTORY'};
+export type ConstructionStep={resourceYield:number;label:string;cost:ConstructionCost;type:'BUILD_SETTLEMENT'|'UPGRADE_SETTLEMENT'|'BUILD_FACTORY'|'UPGRADE_FACTORY'};
 export const CONSTRUCTION_RECIPES:ConstructionStep[]=[
-  {label:'Xây khu định cư cấp 1',cost:CONSTRUCTION_COSTS.settlement,type:'BUILD_SETTLEMENT'},
-  {label:'Nâng khu định cư lên cấp 2',cost:CONSTRUCTION_COSTS.upgrade[2],type:'UPGRADE_SETTLEMENT'},
-  {label:'Xây nhà máy cấp 1',cost:FACTORY_COSTS.build,type:'BUILD_FACTORY'},
-  {label:'Nâng nhà máy lên cấp 2',cost:FACTORY_COSTS.upgrade[2],type:'UPGRADE_FACTORY'},
-  {label:'Nâng nhà máy lên cấp 3',cost:FACTORY_COSTS.upgrade[3],type:'UPGRADE_FACTORY'}
+  {resourceYield:1,label:'Xây khu định cư cấp 1',cost:CONSTRUCTION_COSTS.settlement,type:'BUILD_SETTLEMENT'},
+  {resourceYield:2,label:'Nâng khu định cư lên cấp 2',cost:CONSTRUCTION_COSTS.upgrade[2],type:'UPGRADE_SETTLEMENT'},
+  {resourceYield:3,label:'Xây nhà máy cấp 1',cost:FACTORY_COSTS.build,type:'BUILD_FACTORY'},
+  {resourceYield:4,label:'Nâng nhà máy lên cấp 2',cost:FACTORY_COSTS.upgrade[2],type:'UPGRADE_FACTORY'},
+  {resourceYield:5,label:'Nâng nhà máy lên cấp 3',cost:FACTORY_COSTS.upgrade[3],type:'UPGRADE_FACTORY'}
 ];
 export function nextConstructionStep(state:Pick<GameState,'buildings'|'factories'>,vertexId:string,playerId:number):ConstructionStep|null{
   const home=state.buildings.find(b=>b.vertexId===vertexId);

@@ -15,6 +15,19 @@ beforeEach(()=>{
   transport.send.mockImplementation(()=>new Promise(()=>{}));
 });
 describe('authoritative frontend store',()=>{
+  it('does not award resources on local roll input and only displays server resource snapshots',async()=>{
+    const {useGameStore,restoreConnection}=await import('./gameStore');restoreConnection();
+    const initial=update(1);initial.state.players[0].resources.metal=7;
+    transport.callbacks.get('room:update')!(initial);
+    useGameStore.getState().roll();
+    expect(transport.send).toHaveBeenCalled();
+    expect(useGameStore.getState().players[0].resources.metal).toBe(7);
+    const server=update(2);server.state.players[0].resources.metal=22;
+    server.state.dice=[3,3];server.state.rolled=true;
+    transport.callbacks.get('room:update')!(server);
+    expect(useGameStore.getState().players[0].resources.metal).toBe(22);
+    expect(useGameStore.getState().dice).toEqual([3,3]);
+  });
   it.each([1,2,3,4])('validates and sends start correctly with %i members',async(count)=>{
     const {useGameStore,restoreConnection}=await import('./gameStore');
     restoreConnection();const next=update(0);next.room.status='WAITING';next.state.phase='waiting';

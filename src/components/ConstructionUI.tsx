@@ -1,5 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
+import {buildingResourceYield} from '../rules/productionRules';
 import {CONSTRUCTION_RECIPES,constructionAction,nextConstructionStep} from '../rules/constructionProgression';
 import {applyAction} from '../rules/gameState';
 import {actingOnTurn,affordability} from '../rules/constructionRules';
@@ -17,7 +18,7 @@ export function CostTable({cost,player}:{cost:ConstructionCost;player:Player}){
 export function ConstructionRecipes({onClose}:{onClose:()=>void}){
   const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)!;
   useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[onClose]);
-  return createPortal(<div className="construction-backdrop" onClick={onClose}><section className="construction-dialog" role="dialog" aria-modal="true" aria-label="Công thức xây dựng" onClick={e=>e.stopPropagation()}><button autoFocus className="construction-close" aria-label="Đóng công thức" onClick={onClose}>×</button><h2>Công thức xây dựng</h2><p>Khu định cư 1 → 2 → Nhà máy 1 → 2 → 3</p><p>Hai khu định cư cấp 1 ban đầu được đặt miễn phí trong setup.</p><p>Tối đa 4 khu định cư/công ty, 1 nhà máy/khu. Nhà máy cần khu định cư cấp 2 và không thay thế khu định cư.</p>{CONSTRUCTION_RECIPES.map(step=><section key={step.label}><h3>{step.label}</h3><CostTable cost={step.cost} player={me}/></section>)}</section></div>,document.body);
+  return createPortal(<div className="construction-backdrop" onClick={onClose}><section className="construction-dialog" role="dialog" aria-modal="true" aria-label="Công thức xây dựng" onClick={e=>e.stopPropagation()}><button autoFocus className="construction-close" aria-label="Đóng công thức" onClick={onClose}>×</button><h2>Công thức xây dựng</h2><p>Khu định cư 1 → 2 → Nhà máy 1 → 2 → 3</p><p>Hai khu định cư cấp 1 ban đầu được đặt miễn phí trong setup.</p><p>Tối đa 4 khu định cư/công ty, 1 nhà máy/khu. Nhà máy cần khu định cư cấp 2 và không thay thế khu định cư.</p>{CONSTRUCTION_RECIPES.map(step=><section key={step.label}><h3>{step.label}</h3><p>Sản lượng khai thác: {step.resourceYield} tài nguyên/ô trúng số. Không cộng dồn với công trình nền.</p><CostTable cost={step.cost} player={me}/></section>)}</section></div>,document.body);
 }
 export function constructionState(s:ReturnType<typeof useGameStore.getState>):GameState{
   return{...s,roomId:s.room?.id??'local',seed:0,turnIndex:s.turn,targetProfit:s.targetProfit??0};
@@ -54,6 +55,8 @@ export function ConstructionPopover({vertexId,anchor,onClose}:{vertexId:string;a
   return createPortal(<section ref={box} className="construction-popover" style={position} role="dialog" aria-label="Phát triển công trình">
     <button className="construction-close" aria-label="Đóng công trình" onClick={onClose}>×</button>
     <h3>{home?'Khu định cư cấp '+home.level:'Vị trí khu định cư mới'}{factory?' · Nhà máy cấp '+factory.level:''}</h3>
+    {home&&<p>Sản lượng khai thác hiện tại: <b>{buildingResourceYield(home,factory)} tài nguyên/ô trúng số</b>. Cộng riêng từng ô tiếp giáp; nhà máy thay thế sản lượng khu định cư.</p>}
+    {step&&mine&&<p>Sản lượng sau bước này: <b>{step.resourceYield} tài nguyên/ô trúng số</b>.</p>}
     {!mine?<p>Đây là công trình đối thủ. Bạn không thể nâng cấp.</p>:!step?<p role="status">Đã đạt cấp tối đa — Nhà máy cấp 3.</p>:<>
       {!confirm?<button autoFocus className="primary" onClick={()=>setConfirm(true)}>{step.label}</button>:<><h4>{step.label}</h4><CostTable cost={step.cost} player={me}/><button className="primary" disabled={!!reason} onClick={()=>{if(reason||!action)return;const current=useGameStore.getState();if(action.type==='BUILD_SETTLEMENT')current.buildSettlement(vertexId);else if(action.type==='UPGRADE_SETTLEMENT')current.upgradeSettlement(vertexId);else if(action.type==='BUILD_FACTORY')current.buildFactory(vertexId);else if(action.type==='UPGRADE_FACTORY')current.upgradeFactory(vertexId);onClose()}}>Xác nhận {step.label.toLowerCase()}</button></>}
       {reason&&<p className="construction-reason" role="status">{reason}</p>}

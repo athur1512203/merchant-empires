@@ -59,9 +59,9 @@ describe('sequential construction',()=>{
     for(const state of variants){const before=structuredClone(state);expect(applyAction(state,action).ok).toBe(false);expect(state).toEqual(before)}
     expect(nextConstructionStep({...s,buildings:s.buildings.map(b=>({...b,playerId:1}))},id,0)).toBeNull();
   });
-  it('factory construction keeps level-2 raw production and upgrades preserve used capacity',()=>{
+  it('factory extraction replaces settlement yield and upgrades preserve used capacity',()=>{
     const states=stages(),home=states[1],factory=states[2];
-    for(let total=2;total<=12;total++)expect(calculateResourceProduction(factory,total)).toEqual(calculateResourceProduction(home,total));
+    for(let total=2;total<=12;total++){const previous=calculateResourceProduction(home,total),next=calculateResourceProduction(factory,total);for(const [id,gain] of Object.entries(previous))for(const [resource,n] of Object.entries(gain))expect(next[Number(id)][resource as keyof typeof gain]).toBe(n!/2*3)}
     const s=states[2];s.factories[0].usedCapacity=1;
     const next=advance(s,{type:'UPGRADE_FACTORY',playerId:0,vertexId:s.buildings[0].vertexId});
     expect(next.factories[0].usedCapacity).toBe(1);expect(remainingCapacity(next.factories[0])).toBe(1);

@@ -53,6 +53,37 @@ async function fixture(companies=[0,1,2,3]){
   return {repo,service,app,code,players,clients,updates,connect,act,started,url,sockets};
 }
 describe('Socket.IO multiplayer',()=>{
+  it.each([2,3,4])('synchronizes factory extraction, upgrades and reconnect without duplicate gains for %i players',async(count)=>{
+    const f=await fixture([0,1,2,3].slice(0,count));await f.started();
+    const room=()=>f.repo.rooms.get(f.code)!,s=room().state;
+    s.board.hexes=s.board.hexes.map(h=>({...h,number:4,resource:'metal'}));
+    s.buildings=s.buildings.map(b=>({...b,level:2}));
+    s.factories=s.buildings.filter(b=>b.playerId<2).map(b=>({vertexId:b.vertexId,playerId:b.playerId,level:b.playerId===0?1:3,usedCapacity:0}));
+    s.players=s.players.map(p=>({...p,cash:10000,resources:{metal:100,wood:100,wheat:100,cotton:100}}));
+    const expected=(id:number,yieldAmount:number)=>s.buildings.filter(b=>b.playerId===id).reduce((sum,b)=>sum+s.board.vertices.find(v=>v.id===b.vertexId)!.hexIds.length*yieldAmount,0);
+    expect((await f.act(0,{type:'ROLL_DICE'})).ok).toBe(true);
+    for(const p of room().state.players)expect(p.resources.metal).toBe(100+expected(p.id,p.id===0?3:p.id===1?5:2));
+    await expect.poll(()=>f.clients.every(c=>f.updates.get(c)?.version===room().version)).toBe(true);
+    for(const c of f.clients)expect(f.updates.get(c)!.state.players).toEqual(room().state.players);
+    const beforeReconnect=structuredClone(room().state);
+    f.clients[1].disconnect();f.clients[1]=await f.connect(f.players[1].reconnectToken);
+    expect(f.updates.get(f.clients[1])!.state.players).toEqual(beforeReconnect.players);
+    expect(room().state).toEqual(beforeReconnect);
+    const home=room().state.buildings.find(b=>b.playerId===0)!;
+    expect((await f.act(0,{type:'UPGRADE_FACTORY',vertexId:home.vertexId})).ok).toBe(true);
+    // No extraction is granted by the upgrade itself (only its existing cost).
+    expect(room().state.players[0].resources.metal).toBe(beforeReconnect.players[0].resources.metal-1);
+    for(let who=0;who<count;who++){
+      if(who)expect((await f.act(who,{type:'ROLL_DICE'})).ok).toBe(true);
+      expect((await f.act(who,{type:'END_TURN'})).ok).toBe(true);
+    }
+    const beforeNext=structuredClone(room().state.players[0]);
+    expect((await f.act(0,{type:'ROLL_DICE'})).ok).toBe(true);
+    const gain=room().state.buildings.filter(b=>b.playerId===0).reduce((n,b)=>n+room().state.board.vertices.find(v=>v.id===b.vertexId)!.hexIds.length*(b.vertexId===home.vertexId?4:3),0);
+    expect(room().state.players[0].resources.metal-beforeNext.resources.metal).toBe(gain);
+    await expect.poll(()=>f.clients.every(c=>f.updates.get(c)?.version===room().version)).toBe(true);
+    for(const c of f.clients)expect(f.updates.get(c)!.state.players).toEqual(room().state.players);
+  });
   it.each([2,3,4])('synchronizes two setup passes and reconnect with %i members',async(count)=>{
     const f=await fixture([3,1,0,2].slice(0,count));
     const room=()=>f.repo.rooms.get(f.code)!;

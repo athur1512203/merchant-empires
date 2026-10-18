@@ -36,11 +36,11 @@
 - Có thể xây ở **bất kỳ đỉnh hợp lệ nào trên toàn bản đồ**, không yêu cầu kết nối với công trình hiện có.
 - Chỉ cấm xây trùng một đỉnh đã bị chiếm. Khu định cư cùng hoặc khác công ty được phép liền kề, sát nhau hoặc đan xen.
 - Khu định cư chỉ có cấp **1, 2**; không có cấp 3.
-- Khi ô lục giác kề khu định cư được kích hoạt, khu định cư nhận lần lượt **1 / 2 đơn vị** tài nguyên của ô đó tùy cấp.
+- Khi ô lục giác kề khu định cư được kích hoạt, công trình nhận **1 / 2 / 3 / 4 / 5 đơn vị** tài nguyên của ô đó theo tiến trình Khu định cư 1 → Khu định cư 2 → Nhà máy 1 → Nhà máy 2 → Nhà máy 3. Nhà máy thay thế sản lượng khu định cư cùng đỉnh, không cộng dồn.
 - Xây khu định cư mới sau giai đoạn khởi đầu và nâng cấp khu định cư phải trả **cả nguyên liệu và vàng**.
 - Mỗi khu định cư sở hữu tối đa **1 nhà máy**.
 - Phát triển tuần tự: **Khu định cư 1 → Khu định cư 2 → Nhà máy 1 → Nhà máy 2 → Nhà máy 3**. Không được bỏ cấp.
-- Chỉ xây nhà máy trên khu định cư cấp 2. Nhà máy không thay thế hay xóa khu định cư; nền cấp 2 vẫn khai thác tài nguyên.
+- Chỉ xây nhà máy trên khu định cư cấp 2. Nhà máy không thay thế hay xóa khu định cư; dữ liệu nền cấp 2 được giữ lại nhưng sản lượng áp dụng theo cấp nhà máy (3/4/5), không cộng thêm sản lượng nền.
 - Các chi phí hiện hành được giữ nguyên: xây khu định cư 40 vàng + 1 kim loại, 2 gỗ, 1 lúa mì; nâng cấp 2: 50 vàng + mỗi nguyên liệu 1; nhà máy cấp 1: 70 vàng + 2 kim loại, 1 gỗ, 1 bông; nâng nhà máy cấp 2: 110 vàng + 1 kim loại, 2 gỗ, 2 lúa mì, 1 bông; cấp 3: 180 vàng + 2 kim loại, 1 gỗ, 1 lúa mì, 2 bông.
 - Xây/nâng cấp ghi nhận CAPEX, không trừ trực tiếp lợi nhuận. Công suất nhà máy giữ nguyên 1/2/3 lô theo cấp.
 
