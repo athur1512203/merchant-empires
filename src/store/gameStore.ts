@@ -89,7 +89,7 @@ function enqueue(event:Pending['event'],body:{action?:ClientAction;targetProfit?
 export const useGameStore=create<State>((set,get)=>({...base(),
   createRoom:(name,company)=>enter('',name,company),joinRoom:(code,name,company)=>enter(`/${encodeURIComponent(code)}/join`,name,company),
   reconnect:()=>{if(session)connect(session);else restoreConnection()},
-  start:targetProfit=>{const s=get();if(s.room?.hostPlayerId===s.playerId&&s.room.players.length===4)enqueue('game:start',{targetProfit})},
+  start:targetProfit=>{const s=get();if(s.room?.hostPlayerId===s.playerId&&s.room.players.length>=2&&s.room.players.length<=4)enqueue('game:start',{targetProfit})},
   newMatch:()=>{const socket=active;active=undefined;socket?.disconnect();clearTimeout(retryTimer);pending=null;session=null;sending=false;save(SESSION_KEY,null);save(PENDING_KEY,null);set(base())},
   roll:()=>request({type:'ROLL_DICE'}),endTurn:()=>request({type:'END_TURN'}),
   setMode:mode=>{if(canControl(get()))set({mode,selectedVertex:null})},selectHex:selectedHex=>set({selectedHex}),selectVertex:selectedVertex=>set({selectedVertex}),locateAsset:selectedVertex=>set({selectedVertex}),

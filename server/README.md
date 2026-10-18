@@ -79,7 +79,7 @@ Body là JSON. Các endpoint đọc phòng/state và start/actions yêu cầu `A
 
 Create/join trả HTTP 201: `{room, playerId, reconnectToken}`. `room.players` chỉ chứa id, displayName, companyId, seatIndex; không trả hash/token người khác. GET room trả room metadata và version, không trả state. Version khởi đầu 0, tăng khi start và mỗi action thành công; join không tăng state version.
 
-Start/actions cần header `Idempotency-Key` dài 8–128 ký tự chữ/số/`_`/`-`, ví dụ `turn-01-roll-001`. Chỉ host được start, cần đủ bốn thành viên. Client không gửi playerId, vàng, tài nguyên, kết quả dice hoặc seed; Zod strict từ chối trường ngoài schema.
+Start/actions cần header `Idempotency-Key` dài 8–128 ký tự chữ/số/`_`/`-`, ví dụ `turn-01-roll-001`. Chỉ host được start, cần từ 2 đến 4 thành viên; snapshot chốt seats và players theo thứ tự tham gia. Client không gửi playerId, vàng, tài nguyên, kết quả dice hoặc seed; Zod strict từ chối trường ngoài schema.
 
 Actions hỗ trợ (ngoài type, chỉ gửi các trường dưới đây):
 
@@ -136,7 +136,7 @@ npm run build
 
 `test:neon` đọc trực tiếp `server/.env` mà không in cấu hình, đặt TEST_DATABASE_URL cho tiến trình Vitest và chạy toàn bộ suite tuần tự. Output lỗi được lọc URL/password trước khi hiển thị. Không chạy migrate/reset và không sửa schema.
 
-Ngoài integration test repository cũ, `neonRestart.test.ts` mở backend trên cổng loopback riêng, gọi đủ sáu endpoint, tạo phòng bốn người, đặt khu định cư và gieo xúc xắc, đọc trực tiếp các bản ghi PostgreSQL, dừng tiến trình backend rồi chạy tiến trình mới. Test so sánh toàn bộ state HTTP và snapshot database trước/sau restart, retry action để xác minh idempotency còn hiệu lực, rồi kết thúc lượt để xác nhận tiếp tục trận.
+Ngoài integration test repository cũ, `neonRestart.test.ts` mở backend trên cổng loopback riêng, gọi đủ sáu endpoint, kiểm tra lần lượt phòng 2, 3 và 4 người, đặt khu định cư và gieo xúc xắc, đọc trực tiếp các bản ghi PostgreSQL, dừng tiến trình backend rồi chạy tiến trình mới. Test so sánh toàn bộ state HTTP và snapshot database trước/sau restart, retry action để xác minh idempotency còn hiệu lực, rồi kết thúc lượt để xác nhận tiếp tục trận.
 
 Phòng của test restart có tên thành viên `TASK06A-NEON-RESTART-*` và roomCode ngẫu nhiên riêng; được giữ lại để đối chiếu trong Neon. `server/neon-verification.json` chỉ chứa mã/ID phòng và kết quả kiểm tra, không chứa URL, mật khẩu, reconnect token hoặc GameState riêng tư. Integration test cũ chỉ dọn đúng phòng do nó tạo. Kiểm thử so sánh metadata/version snapshot của các phòng tồn tại trước test để phát hiện thay đổi ngoài phạm vi.
 

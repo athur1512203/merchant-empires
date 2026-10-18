@@ -13,7 +13,7 @@ export type LogicVertex={id:string;hexIds:string[];neighborIds:string[];corners:
 export type BoardLogic={seed:number;hexes:HexCell[];vertices:LogicVertex[];adjacency:Record<string,string[]>};
 
 export type GameAction=
-  |{type:'startMatch';targetProfit:number;seed:number;roomId?:string}
+  |{type:'startMatch';targetProfit:number;seed:number;roomId?:string;companyIds?:number[]}
   |{type:'placeSetupSettlement';playerId:number;vertexId:string}
   |{type:'ROLL_DICE';playerId:number}
   |{type:'END_TURN';playerId:number}

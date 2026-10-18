@@ -13,3 +13,4 @@ server/neon-verification.json
 server/multiplayer-*.png
 server/*.txt
 .render-verification/
+server/neon-verification-*.json

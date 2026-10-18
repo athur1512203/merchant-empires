@@ -44,7 +44,7 @@ describe('room API',()=>{
     await request(f.app).get(f.base).auth(stranger.players[0].reconnectToken,{type:'bearer'}).expect(403);
     await request(f.app).post(`${f.base}/actions`).auth(stranger.players[0].reconnectToken,{type:'bearer'}).set('Idempotency-Key','outsider-key').send({expectedVersion:0,action:{type:'ROLL_DICE'}}).expect(403);
   });
-  it('requires host and four players; preserves seat/company mapping',async()=>{
+  it('requires host and at least two players; preserves seat/company mapping',async()=>{
     const small=await fixture([0]);await small.start().expect(409);
     const f=await fixture([3,1,0,2]);await f.start(1).expect(403);
     await f.start().expect(200);

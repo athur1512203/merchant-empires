@@ -8,7 +8,7 @@
 ## 1. Tổng quan — ĐÃ CHỐT
 
 - Game chiến lược kinh doanh theo lượt, bối cảnh công nghiệp thế kỷ XIX, lấy cảm hứng từ Catan.
-- Một phòng có **4 người chơi thật**, mỗi người điều khiển một công ty trên trình duyệt/thiết bị riêng.
+- Một phòng có **2–4 người chơi thật**, mỗi người điều khiển một công ty trên trình duyệt/thiết bị riêng.
 - Các công ty: **Iron Works** (đỏ), **Timber Guild** (xanh lá), **Golden Trade** (vàng), **Ocean Empire** (xanh dương).
 - **Mục tiêu kiến trúc:** server-authoritative khi có multiplayer qua mạng. **Hiện trạng sau Task 02:** rules engine TypeScript chạy qua `applyAction` trong store phía client; chưa có backend mạng. Không được mô tả hiện trạng là đã có server-authoritative.
 - Chủ phòng đặt **mục tiêu lợi nhuận tích lũy dương**. Người đầu tiên đạt mục tiêu thắng. **Không giới hạn số vòng**.
@@ -17,7 +17,7 @@
 ## 2. Trạng thái khởi đầu — ĐÃ CHỐT
 
 - Mỗi công ty bắt đầu với **0 vàng**, **0 nguyên liệu**, **0 thành phẩm**, **0 lợi nhuận tích lũy**.
-- Khi bắt đầu, bốn người lần lượt đặt **1 khu định cư cấp 1 miễn phí** theo thứ tự P1 → P2 → P3 → P4.
+- Khi bắt đầu, những người tham gia lần lượt đặt **1 khu định cư cấp 1 miễn phí** theo thứ tự tham gia phòng, chỉ gồm các công ty đã được chọn khi bắt đầu.
 - Không có đường miễn phí hay đường xây dựng.
 - Sau khi cả 4 khu định cư đầu tiên được đặt hợp lệ, trận đấu bước vào vòng 1.
 

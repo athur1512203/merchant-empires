@@ -8,6 +8,8 @@ import {attachRealtime} from '../src/realtime';
 import {RoomService} from '../src/service';
 import {MemoryRepository} from './memoryRepository';
 import {canPlaceSetupSettlement} from '../../src/rules/settlementRules';
+import {updateMarketPrices} from '../../src/rules/marketRules';
+import {mulberry32} from '../../src/rules/rng';
 import {openAuction} from '../../src/rules/auctionRules';
 import type {Ack,RoomUpdate,ClientAction} from '../../src/network/protocol';
 const disposers:(()=>Promise<void>)[]=[];
@@ -39,17 +41,53 @@ async function fixture(companies=[0,1,2,3]){
   }
   async function started(){
     const ack=await clients[0].timeout(3000).emitWithAck('game:start',{expectedVersion:0,targetProfit:1000,idempotencyKey:'realtime-start'});expect(ack.ok).toBe(true);
-    for(let who=0;who<4;who++){
+    for(let who=0;who<companies.length;who++){
       const state=repo.rooms.get(code)!.state,companyId=players[who].room.players.find((p:{id:string})=>p.id===players[who].playerId)!.companyId;
       const candidates=state.board.vertices.filter(v=>canPlaceSetupSettlement(state,companyId,v.id).ok);
       const vertexId=(candidates.find(v=>v.hexIds.some(id=>state.board.hexes.some(h=>h.id===id&&h.number===4)))??candidates[0]).id;
       expect((await act(who,{type:'placeSetupSettlement',vertexId})).ok).toBe(true);
     }
-    await expect.poll(()=>clients.every(s=>updates.get(s)?.version===5)).toBe(true);
+    await expect.poll(()=>clients.every(s=>updates.get(s)?.version===companies.length+1)).toBe(true);
   }
   return {repo,service,app,code,players,clients,updates,connect,act,started,url,sockets};
 }
 describe('Socket.IO multiplayer',()=>{
+  it.each([[3,1],[2,0,3],[3,1,0,2]])('runs rounds, tender and reconnect with companies %j',async(...companies:number[])=>{
+    const f=await fixture(companies);await f.started();
+    const room=()=>f.repo.rooms.get(f.code)!;
+    expect(room().state.seats).toEqual(companies);
+    expect(room().state.players.map(p=>p.id)).toEqual(companies);
+    await request(f.app).post(`/api/rooms/${f.code}/join`).send({displayName:'Late',companyId:0}).expect(409);
+    for(let round=1;round<=3;round++){
+      for(let who=0;who<companies.length;who++){
+        expect(room().state.round).toBe(round);
+        expect(room().state.seats[room().state.turnIndex]).toBe(companies[who]);
+        expect((await f.act(who,{type:'ROLL_DICE'})).ok).toBe(true);
+        const beforeEnd=structuredClone(room().state);
+        expect((await f.act(who,{type:'END_TURN'})).ok).toBe(true);
+        const expectedMarket=who===companies.length-1?updateMarketPrices(beforeEnd,mulberry32((beforeEnd.seed+(round+1)*7_919)>>>0)):{resourcePrices:beforeEnd.resourcePrices,marketPressure:beforeEnd.marketPressure};
+        expect(room().state.resourcePrices).toEqual(expectedMarket.resourcePrices);
+        expect(room().state.marketPressure).toEqual(expectedMarket.marketPressure);
+      }
+    }
+    expect(room().state.auction.status).toBe('open');
+    expect((await f.act(0,{type:'SUBMIT_BID',amount:10})).ok).toBe(true);
+    const before=structuredClone(room().state),last=companies.length-1;
+    f.clients[last].disconnect();
+    await expect.poll(()=>f.updates.get(f.clients[0])?.onlinePlayerIds?.length).toBe(companies.length-1);
+    expect(room().state).toEqual(before);
+    f.clients[last]=await f.connect(f.players[last].reconnectToken);
+    expect(f.updates.get(f.clients[last])!.state.seats).toEqual(companies);
+    for(let who=1;who<companies.length;who++)expect((await f.act(who,{type:'SKIP_BID'})).ok).toBe(true);
+    expect(room().state).toMatchObject({round:4,turnIndex:0,auction:{status:'idle'}});
+    expect(room().state.contracts.at(-1)).toMatchObject({winnerId:companies[0],winningBid:10});
+    for(let who=0;who<companies.length;who++){
+      expect((await f.act(who,{type:'ROLL_DICE'})).ok).toBe(true);
+      expect((await f.act(who,{type:'END_TURN'})).ok).toBe(true);
+    }
+    expect(room().state.round).toBe(5);
+  });
+
   it('updates lobby after HTTP joins, enforces four unique companies and exposes only availability before joining',async()=>{
     const f=await fixture();
     expect(f.updates.get(f.clients[0])!.room.players).toHaveLength(4);

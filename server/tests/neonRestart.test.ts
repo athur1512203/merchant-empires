@@ -35,7 +35,8 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     });
   }
   afterAll(async()=>{sockets.forEach(s=>s.disconnect());await stop();await db.$disconnect()},30_000);
-  it('creates through HTTP, verifies Neon rows, restarts the OS process and resumes exactly',async()=>{
+  it.each([2,3,4])('persists %i players across a real backend restart and reconnect',async(count)=>{
+    sockets.splice(0).forEach(s=>s.disconnect());updates.clear();
     // Remember existing records without logging private state. Only new test rooms are mutated.
     const baseline=await db.gameRoom.findMany({select:{id:true,updatedAt:true,snapshot:{select:{version:true,updatedAt:true}}}});
     const tables=await db.$queryRaw<{tablename:string}[]>`SELECT tablename FROM pg_tables WHERE schemaname = current_schema()`;
@@ -56,32 +57,32 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     }
     const host=await http<Created>('','POST',{displayName:'TASK06A-NEON-RESTART-HOST',companyId:0});
     const code=host.room.roomCode,id=host.room.id,players=[host];
-    for(let companyId=1;companyId<4;companyId++)players.push(await http<Created>(`/${code}/join`,'POST',{displayName:`TASK06A-NEON-RESTART-P${companyId}`,companyId}));
+    for(let companyId=1;companyId<count;companyId++)players.push(await http<Created>(`/${code}/join`,'POST',{displayName:`TASK06A-NEON-RESTART-P${companyId}`,companyId}));
     for(const player of players){
       const socket=io(`http://127.0.0.1:${port}`,{auth:{roomCode:code,reconnectToken:player.reconnectToken},reconnectionDelay:250,reconnectionDelayMax:1000});
       sockets.push(socket);socket.on('room:update',(update:RoomUpdate)=>updates.set(socket,update));
     }
     await expect.poll(()=>sockets.every(s=>s.connected&&updates.has(s)),{timeout:45_000}).toBe(true);
     const room=await http<ReturnType<typeof roomView>>(`/${code}`,'GET',undefined,host.reconnectToken);
-    expect(room.players).toHaveLength(4);
+    expect(room.players).toHaveLength(count);
     await http(`/${code}/start`,'POST',{expectedVersion:0,targetProfit:1000},host.reconnectToken,'neon-start-001');
-    for(let playerId=0;playerId<4;playerId++){
+    for(let playerId=0;playerId<count;playerId++){
       const snapshot=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
       const state=snapshot.state as unknown as GameState;
       const vertexId=state.board.vertices.find(v=>canPlaceSetupSettlement(state,playerId,v.id).ok)!.id;
       await http(`/${code}/actions`,'POST',{expectedVersion:playerId+1,action:{type:'placeSetupSettlement',vertexId}},players[playerId].reconnectToken,`neon-setup-${playerId}`);
     }
-    await http(`/${code}/actions`,'POST',{expectedVersion:5,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
+    await http(`/${code}/actions`,'POST',{expectedVersion:count+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
     const before=await http(`/${code}/state`,'GET',undefined,host.reconnectToken);
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===6),{timeout:30_000}).toBe(true);
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+2),{timeout:30_000}).toBe(true);
     for(const socket of sockets)expect(updates.get(socket)!.state).toEqual(before.state);
     const stored=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
-    expect(stored.version).toBe(6);
+    expect(stored.version).toBe(count+2);
     expect(stored.state).toMatchObject({phase:'playing',buildings:before.state.buildings,dice:before.state.dice,rolled:true});
     const members=await db.roomPlayer.findMany({where:{roomId:id}});
-    expect(members).toHaveLength(4);
-    for(let i=0;i<4;i++)expect(members.find(m=>m.id===players[i].playerId)!.reconnectTokenHash).not.toBe(players[i].reconnectToken);
-    expect(await db.gameAction.count({where:{roomId:id}})).toBe(6);
+    expect(members).toHaveLength(count);
+    for(let i=0;i<count;i++)expect(members.find(m=>m.id===players[i].playerId)!.reconnectTokenHash).not.toBe(players[i].reconnectToken);
+    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count+2);
     const persistedRoom=await db.gameRoom.findUniqueOrThrow({where:{id}});
     expect(persistedRoom.status).toBe('PLAYING');
     const oldPid=child!.pid;
@@ -90,22 +91,23 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     const recovered=await http(`/${code}/state`,'GET',undefined,host.reconnectToken);
     await expect.poll(()=>sockets.every(s=>s.connected),{timeout:45_000}).toBe(true);
     for(const socket of sockets){updates.delete(socket);socket.emit('room:sync')}
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===6),{timeout:30_000}).toBe(true);
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+2),{timeout:30_000}).toBe(true);
     for(const socket of sockets)expect(updates.get(socket)!.state).toEqual(before.state);
     expect(recovered).toEqual(before);
     const unchanged=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
     expect(unchanged).toEqual(stored);
-    const replay=await http(`/${code}/actions`,'POST',{expectedVersion:5,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
-    expect(replay).toMatchObject({replayed:true,appliedVersion:6,version:6});
-    expect(await db.gameAction.count({where:{roomId:id}})).toBe(6);
-    await http(`/${code}/actions`,'POST',{expectedVersion:6,action:{type:'END_TURN'}},host.reconnectToken,'neon-end-001');
+    const replay=await http(`/${code}/actions`,'POST',{expectedVersion:count+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
+    expect(replay).toMatchObject({replayed:true,appliedVersion:count+2,version:count+2});
+    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count+2);
+    await http(`/${code}/actions`,'POST',{expectedVersion:count+2,action:{type:'END_TURN'}},host.reconnectToken,'neon-end-001');
     const resumed=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
-    expect(resumed.version).toBe(7);expect(resumed.state).toMatchObject({turnIndex:1,rolled:false});
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===7),{timeout:30_000}).toBe(true);
+    expect(resumed.version).toBe(count+3);expect(resumed.state).toMatchObject({turnIndex:1,rolled:false});
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+3),{timeout:30_000}).toBe(true);
     const existing=await db.gameRoom.findMany({where:{id:{in:baseline.map(r=>r.id)}},select:{id:true,updatedAt:true,snapshot:{select:{version:true,updatedAt:true}}}});
     expect(existing.sort((a,b)=>a.id.localeCompare(b.id))).toEqual(baseline.sort((a,b)=>a.id.localeCompare(b.id)));
+    await stop();
     // Retain this uniquely generated room as reviewable evidence. Never print tokens/state/URL.
-    await writeFile('server/neon-verification.json',JSON.stringify({verifiedAt:new Date().toISOString(),roomCode:code,roomId:id,players:4,actions:7,version:7,phase:'playing',restart:'PASS',realtimeClients:4,realtimeReconnect:'PASS',exactSnapshotRestored:true,idempotencyAfterRestart:'PASS',existingRoomsUnchanged:baseline.length,tablesVerified:tables.map(t=>t.tablename).sort(),completedMigrations:Number(migrations[0].count)},null,2)+'\n');
-    console.log(`NEON_VERIFIED roomCode=${code} roomId=${id} players=4 actions=7 version=7 restart=PASS existingRoomsUnchanged=${baseline.length}`);
+    await writeFile(`server/neon-verification-${count}.json`,JSON.stringify({verifiedAt:new Date().toISOString(),roomCode:code,roomId:id,players:count,actions:count+3,version:count+3,phase:'playing',restart:'PASS',realtimeClients:count,realtimeReconnect:'PASS',exactSnapshotRestored:true,idempotencyAfterRestart:'PASS',existingRoomsUnchanged:baseline.length,tablesVerified:tables.map(t=>t.tablename).sort(),completedMigrations:Number(migrations[0].count)},null,2)+'\n');
+    console.log(`NEON_VERIFIED roomCode=${code} roomId=${id} players=${count} actions=${count+3} version=${count+3} restart=PASS existingRoomsUnchanged=${baseline.length}`);
   },180_000);
 });

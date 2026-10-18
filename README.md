@@ -28,7 +28,7 @@ npm run dev
 
 Open the URL printed by Vite (normally `http://localhost:5173`).
 
-Mở bốn tab riêng, tạo/tham gia cùng mã phòng và chọn bốn công ty khác nhau. Chủ phòng bắt đầu khi đủ bốn người. Mỗi tab điều khiển công ty của mình; refresh giữ phiên bằng sessionStorage. Express + Socket.IO xác thực/tính gameplay, PostgreSQL lưu snapshot; frontend chỉ nhận state từ server.
+Mở 2–4 tab riêng, tạo/tham gia cùng mã phòng và chọn các công ty khác nhau. Chủ phòng có thể bắt đầu từ 2 người; danh sách công ty được chốt khi bắt đầu. Người mất kết nối giữ ghế để kết nối lại; người ngoài không thể vào trận đã bắt đầu. Mỗi tab điều khiển công ty của mình; refresh giữ phiên bằng sessionStorage. Express + Socket.IO xác thực/tính gameplay, PostgreSQL lưu snapshot; frontend chỉ nhận state từ server.
 
 ## Verify
 

@@ -70,8 +70,8 @@ export class RoomService {
       let action:GameAction;
       if('targetProfit' in parsed){
         if(room.status!=='WAITING')throw new ApiError(409,'ROOM_ALREADY_STARTED');
-        if(room.players.length!==4)throw new ApiError(409,'NEED_FOUR_PLAYERS');
-        action={type:'startMatch',targetProfit:parsed.targetProfit,seed:Math.floor(this.rng()*0x100000000),roomId:room.id};
+        if(room.players.length<2||room.players.length>4)throw new ApiError(409,'NEED_TWO_TO_FOUR_PLAYERS');
+        action={type:'startMatch',targetProfit:parsed.targetProfit,seed:Math.floor(this.rng()*0x100000000),roomId:room.id,companyIds:[...room.players].sort((a,b)=>a.seatIndex-b.seatIndex).map(p=>p.companyId)};
       }else{
         if(room.status!=='PLAYING')throw new ApiError(409,'ROOM_NOT_PLAYING');
         action={...parsed.action,playerId:player.companyId} as GameAction;
@@ -80,8 +80,6 @@ export class RoomService {
       if(!result.ok)throw new ApiError(422,'ILLEGAL_ACTION',result.error);
       if(action.type==='SUBMIT_BID')room.bids.push({id:randomUUID(),roomId:room.id,auctionId:room.state.auction.lot!.id,playerId:player.id,amount:action.amount,submittedAt:new Date()});
       room.state=result.state;
-      // Existing rules use company IDs as actors. Seats preserve joining order.
-      if(start)room.state.seats=[...room.players].sort((a,b)=>a.seatIndex-b.seatIndex).map(p=>p.companyId);
       room.version++;
       room.status=room.state.phase==='finished'?'FINISHED':'PLAYING';
       room.updatedAt=new Date();
