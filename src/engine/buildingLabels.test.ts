@@ -8,13 +8,13 @@ describe('building-aware dice labels',()=>{
   it('keeps an unobstructed label at the original center',()=>{
     expect(buildingLabelPositions([hex],[],[],[],.6,.6).get(hex.id)).toEqual({x:0,y:0});
   });
-  it('moves a label away from a bottom-vertex building without moving the vertex',()=>{
+  it('keeps labels inside the cell and vertex coordinates unchanged with doubled artwork',()=>{
     const v:Vertex={id:'bottom',x:0,y:HEX_SIZE,hexIds:[hex.id]};
     const b:Building={vertexId:v.id,playerId:0,type:'settlement',level:1};
     const label=buildingLabelPositions([hex],[v],[b],[],.6,.6).get(hex.id)!;
-    expect(label.y).toBeLessThan(0);
-    const imageTop=v.y*.6-28,numberBottom=label.y*.6+15*.7;
-    expect(numberBottom).toBeLessThan(imageTop);
+    // A 56px building can occupy the full interior at fitted zoom. The label
+    // stays inside its hex and is painted above artwork by Board.
+    expect(Math.hypot(label.x,label.y)).toBeLessThan(HEX_SIZE);
     expect(v).toEqual({id:'bottom',x:0,y:HEX_SIZE,hexIds:[hex.id]});
   });
   it('keeps crowded labels within the hex at fitted and detailed zoom',()=>{

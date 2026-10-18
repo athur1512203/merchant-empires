@@ -1,0 +1,122 @@
+{
+  "iron_works_settlement_level_1": {
+    "x": 46,
+    "y": 65,
+    "width": 145,
+    "height": 123
+  },
+  "iron_works_settlement_level_2": {
+    "x": 25,
+    "y": 55,
+    "width": 177,
+    "height": 146
+  },
+  "iron_works_factory_level_1": {
+    "x": 34,
+    "y": 62,
+    "width": 171,
+    "height": 132
+  },
+  "iron_works_factory_level_2": {
+    "x": 13,
+    "y": 56,
+    "width": 216,
+    "height": 144
+  },
+  "iron_works_factory_level_3": {
+    "x": 5,
+    "y": 31,
+    "width": 246,
+    "height": 176
+  },
+  "timber_guild_settlement_level_1": {
+    "x": 47,
+    "y": 64,
+    "width": 144,
+    "height": 128
+  },
+  "timber_guild_settlement_level_2": {
+    "x": 39,
+    "y": 54,
+    "width": 166,
+    "height": 148
+  },
+  "timber_guild_factory_level_1": {
+    "x": 36,
+    "y": 61,
+    "width": 171,
+    "height": 133
+  },
+  "timber_guild_factory_level_2": {
+    "x": 15,
+    "y": 55,
+    "width": 220,
+    "height": 145
+  },
+  "timber_guild_factory_level_3": {
+    "x": 5,
+    "y": 30,
+    "width": 246,
+    "height": 179
+  },
+  "golden_trade_settlement_level_1": {
+    "x": 51,
+    "y": 64,
+    "width": 148,
+    "height": 128
+  },
+  "golden_trade_settlement_level_2": {
+    "x": 42,
+    "y": 54,
+    "width": 178,
+    "height": 148
+  },
+  "golden_trade_factory_level_1": {
+    "x": 49,
+    "y": 61,
+    "width": 168,
+    "height": 133
+  },
+  "golden_trade_factory_level_2": {
+    "x": 26,
+    "y": 55,
+    "width": 220,
+    "height": 145
+  },
+  "golden_trade_factory_level_3": {
+    "x": 5,
+    "y": 30,
+    "width": 246,
+    "height": 180
+  },
+  "ocean_empire_settlement_level_1": {
+    "x": 62,
+    "y": 70,
+    "width": 126,
+    "height": 116
+  },
+  "ocean_empire_settlement_level_2": {
+    "x": 46,
+    "y": 61,
+    "width": 159,
+    "height": 134
+  },
+  "ocean_empire_factory_level_1": {
+    "x": 49,
+    "y": 68,
+    "width": 155,
+    "height": 120
+  },
+  "ocean_empire_factory_level_2": {
+    "x": 33,
+    "y": 62,
+    "width": 195,
+    "height": 132
+  },
+  "ocean_empire_factory_level_3": {
+    "x": 4,
+    "y": 39,
+    "width": 238,
+    "height": 163
+  }
+}

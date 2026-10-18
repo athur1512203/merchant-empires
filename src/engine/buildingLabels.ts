@@ -4,10 +4,10 @@ import {HEX_SIZE} from './hexGrid';
 
 /** Presentation only: keep dice labels inside their hex and away from artwork. */
 export function buildingLabelPositions(hexes:Hex[],vertices:Vertex[],buildings:Building[],factories:Factory[],zoom:number,fittedZoom:number){
-  const height=28*Math.min(1,zoom/fittedZoom),radius=15*Math.max(zoom,.7);
+  const displayScale=Math.min(1,zoom/fittedZoom),radius=15*Math.max(zoom,.7);
   const rectangles=buildings.flatMap(b=>{
     const v=vertices.find(v=>v.id===b.vertexId);if(!v)return[];
-    const asset=buildingArtwork(b.level,factories.find(f=>f.vertexId===b.vertexId)?.level),width=height*asset.width/asset.height;
+    const asset=buildingArtwork(b.level,factories.find(f=>f.vertexId===b.vertexId)?.level,b.playerId),width=asset.frameWidth*displayScale,height=asset.frameHeight*displayScale;
     return[{left:v.x*zoom-width/2,right:v.x*zoom+width/2,top:v.y*zoom-height,bottom:v.y*zoom+4}];
   });
   const inset=Math.max(0,HEX_SIZE*Math.sqrt(3)/2*zoom-radius-1);
