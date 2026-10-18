@@ -19,6 +19,7 @@ export function canBuildFactory(state:Pick<GameState,'buildings'|'factories'>,ve
   const b=occupying(vertexId,state.buildings);
   if(!b)return{ok:false as const,error:'Chỉ được xây nhà máy trên khu định cư.'};
   if(b.playerId!==playerId)return{ok:false as const,error:'Bạn không sở hữu khu định cư này.'};
+  if(b.level!==2)return{ok:false as const,error:'Khu định cư phải đạt cấp 2 trước khi xây nhà máy.'};
   if(factoryOn(vertexId,state.factories))return{ok:false as const,error:'Mỗi khu định cư tối đa 1 nhà máy.'};
   return{ok:true as const};
 }

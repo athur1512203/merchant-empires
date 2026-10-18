@@ -3,6 +3,7 @@ import {PrismaClient} from '@prisma/client';
 import {PrismaRoomRepository} from '../src/prismaRepository';
 import {RoomService} from '../src/service';
 import {canPlaceSetupSettlement} from '../../src/rules/settlementRules';
+import {CONSTRUCTION_RECIPES} from '../../src/rules/constructionProgression';
 import {openAuction} from '../../src/rules/auctionRules';
 
 // Explicit opt-in: point TEST_DATABASE_URL at an already migrated test database.
@@ -66,5 +67,39 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL integration',()=>{
     const own=await restarted.get(code,tokens[0],true),opponent=await restarted.get(code,tokens[2],true);
     expect(own).toMatchObject({version:8,state:{auction:{sealedBids:[{amount:10}]}}});
     expect(opponent).toMatchObject({version:8,state:{auction:{sealedBids:[]}}});
+  },120_000);
+
+  it('persists sequential construction and legacy normalization without deleting snapshots',async()=>{
+    const host=await a.create({displayName:'Construction regression',companyId:0});roomIds.push(host.room.id);
+    const code=host.room.roomCode,guest=await a.join(code,{displayName:'Construction guest',companyId:3});
+    await a.execute(code,host.reconnectToken,'construction-start',{expectedVersion:0,targetProfit:999999},true);
+    for(const [who,token] of [[0,host.reconnectToken],[3,guest.reconnectToken]] as const){
+      const room=await repo.transact(code,r=>r);const vertexId=room.state.board.vertices.find(v=>canPlaceSetupSettlement(room.state,who,v.id).ok)!.id;
+      await a.execute(code,token,'construction-setup-'+who,{expectedVersion:room.version,action:{type:'placeSetupSettlement',vertexId}});
+    }
+    await repo.transact(code,r=>{r.state.rolled=true;r.state.players[0]={...r.state.players[0],cash:10000,resources:{metal:100,wood:100,wheat:100,cotton:100}};r.version++});
+    const home=(await repo.transact(code,r=>r.state.buildings[0])).vertexId;
+    for(const [index,step] of CONSTRUCTION_RECIPES.slice(1).entries()){
+      const version=await repo.transact(code,r=>r.version);
+      if(index===0)await expect(a.execute(code,host.reconnectToken,'skip-factory-stage',{expectedVersion:version,action:{type:'BUILD_FACTORY',vertexId:home}})).rejects.toMatchObject({code:'ILLEGAL_ACTION'});
+      await a.execute(code,host.reconnectToken,'construction-step-'+index,{expectedVersion:version,action:{type:step.type,vertexId:home}});
+      const restored=await b.get(code,host.reconnectToken,true),stored=await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}});
+      if(!('state' in restored))throw new Error('Missing state response');
+      expect(restored.state.buildings[0]).toMatchObject({vertexId:home,level:2});
+      expect((stored.state as unknown as {buildings:unknown[]}).buildings).toEqual(restored.state.buildings);
+      expect(restored.state.factories).toHaveLength(index===0?0:1);
+      if(index>0)expect(restored.state.factories[0].level).toBe(index);
+      expect(restored.state.players[0].profit).toBe(0);
+    }
+    await repo.transact(code,r=>{delete r.state.constructionRulesVersion;(r.state.buildings[0] as unknown as {level:number}).level=3;r.version++});
+    const raw=await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}});
+    const view=await b.get(code,host.reconnectToken,true);
+    if(!('state' in view))throw new Error('Missing state response');
+    expect(view.state.buildings[0].level).toBe(2);expect(view.state).not.toHaveProperty('legacyConstruction');
+    expect(await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}})).toEqual(raw);
+    await a.execute(code,host.reconnectToken,'construction-legacy-end',{expectedVersion:view.version,action:{type:'END_TURN'}});
+    const migrated=await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}});
+    const state=migrated.state as unknown as {buildings:{level:number}[];legacyConstruction:{buildings:{level:number}[]}};
+    expect(state.buildings[0].level).toBe(2);expect(state.legacyConstruction.buildings[0].level).toBe(3);
   },120_000);
 });

@@ -7,7 +7,7 @@ function playing(over:Partial<GameState>={}):GameState{return{...createWaitingSt
 function site(s:GameState){return s.board.vertices[0].id}
 function withHome(over:Partial<GameState>={}):GameState{
   const s=playing(over),id=site(s);
-  s.buildings=[{vertexId:id,playerId:0,type:'settlement',level:1}];
+  s.buildings=[{vertexId:id,playerId:0,type:'settlement',level:2}];
   s.players[0]={...s.players[0],cash:1000,resources:{metal:20,wood:20,wheat:20,cotton:20},inventoryCost:{...s.players[0].inventoryCost,metal:200,wood:0,wheat:0,cotton:0}};
   return s;
 }

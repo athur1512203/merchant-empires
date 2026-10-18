@@ -19,7 +19,7 @@ export function createCompany(id:number):Player{
 }
 
 export function createWaitingState(roomId='local'):GameState{
-  return{roomId,seed:0,phase:'waiting',targetProfit:0,round:1,turnIndex:0,seats:[0,1,2,3],players:COMPANIES.map(c=>createCompany(c.id)),board:generateBoard(1),buildings:[],factories:[],winnerId:null,resourcePrices:{...REFERENCE_RAW_PRICES},marketPressure:emptyResources(),auction:idleAuction(),contracts:[],dice:null,rolled:false};
+  return{constructionRulesVersion:2,roomId,seed:0,phase:'waiting',targetProfit:0,round:1,turnIndex:0,seats:[0,1,2,3],players:COMPANIES.map(c=>createCompany(c.id)),board:generateBoard(1),buildings:[],factories:[],winnerId:null,resourcePrices:{...REFERENCE_RAW_PRICES},marketPressure:emptyResources(),auction:idleAuction(),contracts:[],dice:null,rolled:false};
 }
 
 export function startMatch(state:GameState,targetProfit:number,seed:number,roomId=state.roomId,companyIds:number[]=state.seats):ActionResult{

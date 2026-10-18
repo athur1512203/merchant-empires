@@ -8,7 +8,7 @@ import type {GameState} from './types';
 
 const fixed=(...values:number[])=>{let i=0;return()=>values[i++]??values.at(-1)??0};
 function playing(){return{...createWaitingState(),phase:'playing' as const,round:1,turnIndex:0,dice:null,rolled:false}}
-function withToken(level:1|2|3=1){const s=playing(),v=s.board.vertices.find(x=>x.hexIds.length>=2)!,ids=new Set(v.hexIds);return{...s,board:{...s.board,hexes:s.board.hexes.map(h=>({...h,number:ids.has(h.id)?6:3}))},buildings:[{vertexId:v.id,playerId:0,type:'settlement',level} as Building]}}
+function withToken(level:1|2=1){const s=playing(),v=s.board.vertices.find(x=>x.hexIds.length>=2)!,ids=new Set(v.hexIds);return{...s,board:{...s.board,hexes:s.board.hexes.map(h=>({...h,number:ids.has(h.id)?6:3}))},buildings:[{vertexId:v.id,playerId:0,type:'settlement',level} as Building]}}
 
 describe('DiceRules',()=>{
  it('mỗi viên luôn từ 1 đến 6',()=>{for(let n=0;n<6;n++){const r=rollDice(playing(),0,fixed(n/6,n/6));expect(r.ok&&r.state.dice?.every(d=>d>=1&&d<=6)).toBe(true)}});
@@ -22,7 +22,7 @@ describe('DiceRules',()=>{
 describe('ProductionRules',()=>{
  it('tổng 7 không tạo tài nguyên',()=>expect(calculateResourceProduction(withToken(),7)).toEqual({}));
  it('tìm đúng các hex được kích hoạt',()=>expect(getActivatedHexes(withToken().board,6).length).toBeGreaterThanOrEqual(2));
- it.each([1,2,3] as const)('khu định cư cấp %s nhận đúng sản lượng mỗi hex',level=>{const s=withToken(level),v=s.board.vertices.find(x=>x.id===s.buildings[0].vertexId)!;const result=calculateResourceProduction(s,6)[0];const expected:Record<string,number>={};for(const id of v.hexIds){const r=s.board.hexes.find(h=>h.id===id)!.resource;expected[r]=(expected[r]??0)+level}expect(result).toEqual(expected)});
+ it.each([1,2] as const)('khu định cư cấp %s nhận đúng sản lượng mỗi hex',level=>{const s=withToken(level),v=s.board.vertices.find(x=>x.id===s.buildings[0].vertexId)!;const result=calculateResourceProduction(s,6)[0];const expected:Record<string,number>={};for(const id of v.hexIds){const r=s.board.hexes.find(h=>h.id===id)!.resource;expected[r]=(expected[r]??0)+level}expect(result).toEqual(expected)});
  it('nhiều công ty cùng nhận tài nguyên',()=>{const s=withToken(),v1=s.board.vertices.find(v=>v.id!==s.buildings[0].vertexId&&v.hexIds.some(id=>s.board.hexes.find(h=>h.id===id)?.number===6))!;s.buildings.push({vertexId:v1.id,playerId:1,type:'settlement',level:1});const r=calculateResourceProduction(s,6);expect(r[0]).toBeTruthy();expect(r[1]).toBeTruthy()});
  it('nhiều hex cùng số được cộng dồn',()=>{const s=withToken(),r=calculateResourceProduction(s,6)[0];expect(Object.values(r).reduce((a,b)=>a+(b??0),0)).toBeGreaterThanOrEqual(2)});
  it('nhiều khu định cư cùng công ty được cộng dồn',()=>{const s=withToken(),v=s.board.vertices.find(x=>x.id!==s.buildings[0].vertexId&&x.hexIds.some(id=>s.board.hexes.find(h=>h.id===id)?.number===6))!;s.buildings.push({vertexId:v.id,playerId:0,type:'settlement',level:1});expect(Object.values(calculateResourceProduction(s,6)[0]).reduce((a,b)=>a+(b??0),0)).toBeGreaterThan(2)});

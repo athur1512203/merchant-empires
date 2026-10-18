@@ -14,7 +14,7 @@ export const RESOURCES=(Object.keys(BASE_RESOURCE_PRICES) as Resource[]);
 export const MARKET_ITEMS=(Object.keys(COMMODITY_NAMES) as Commodity[]);
 export const RECIPES:Record<Product,{inputs:Partial<Record<Commodity,number>>;output:number;productionCost:number}>=Object.fromEntries(PRODUCTS.map(p=>[p,{inputs:RULE_RECIPES[p].inputs,output:RULE_RECIPES[p].output,productionCost:RULE_RECIPES[p].gold}])) as Record<Product,{inputs:Partial<Record<Commodity,number>>;output:number;productionCost:number}>;
 export const SETTLEMENT_BUILD_COST={resources:CONSTRUCTION_COSTS.settlement.resources,cash:CONSTRUCTION_COSTS.settlement.gold};
-export const SETTLEMENT_UPGRADE_COST={2:{resources:CONSTRUCTION_COSTS.upgrade[2].resources,cash:CONSTRUCTION_COSTS.upgrade[2].gold},3:{resources:CONSTRUCTION_COSTS.upgrade[3].resources,cash:CONSTRUCTION_COSTS.upgrade[3].gold}} as const;
+export const SETTLEMENT_UPGRADE_COST={2:{resources:CONSTRUCTION_COSTS.upgrade[2].resources,cash:CONSTRUCTION_COSTS.upgrade[2].gold}} as const;
 export const FACTORY_COST={1:{resources:FACTORY_COSTS.build.resources,cash:FACTORY_COSTS.build.gold},2:{resources:FACTORY_COSTS.upgrade[2].resources,cash:FACTORY_COSTS.upgrade[2].gold},3:{resources:FACTORY_COSTS.upgrade[3].resources,cash:FACTORY_COSTS.upgrade[3].gold}} as const;
 export const FACTORY_CAPACITY=RULE_FACTORY_CAPACITY;
 export const CONTRACT_TEMPLATES=[

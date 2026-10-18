@@ -35,19 +35,23 @@
 - Mỗi công ty sở hữu tối đa **3 khu định cư**.
 - Có thể xây ở **bất kỳ đỉnh hợp lệ nào trên toàn bản đồ**, không yêu cầu kết nối với công trình hiện có.
 - Không được xây trùng đỉnh hoặc trên đỉnh liền kề bất kỳ khu định cư nào (kể cả của chính mình).
-- Khu định cư có cấp **1, 2, 3**.
-- Khi ô lục giác kề khu định cư được kích hoạt, khu định cư nhận lần lượt **1 / 2 / 3 đơn vị** tài nguyên của ô đó tùy cấp.
+- Khu định cư chỉ có cấp **1, 2**; không có cấp 3.
+- Khi ô lục giác kề khu định cư được kích hoạt, khu định cư nhận lần lượt **1 / 2 đơn vị** tài nguyên của ô đó tùy cấp.
 - Xây khu định cư mới sau giai đoạn khởi đầu và nâng cấp khu định cư phải trả **cả nguyên liệu và vàng**.
 - Mỗi khu định cư sở hữu tối đa **1 nhà máy**.
+- Phát triển tuần tự: **Khu định cư 1 → Khu định cư 2 → Nhà máy 1 → Nhà máy 2 → Nhà máy 3**. Không được bỏ cấp.
+- Chỉ xây nhà máy trên khu định cư cấp 2. Nhà máy không thay thế hay xóa khu định cư; nền cấp 2 vẫn khai thác tài nguyên.
+- Các chi phí hiện hành được giữ nguyên: xây khu định cư 40 vàng + 1 kim loại, 2 gỗ, 1 lúa mì; nâng cấp 2: 50 vàng + mỗi nguyên liệu 1; nhà máy cấp 1: 70 vàng + 2 kim loại, 1 gỗ, 1 bông; nâng nhà máy cấp 2: 110 vàng + 1 kim loại, 2 gỗ, 2 lúa mì, 1 bông; cấp 3: 180 vàng + 2 kim loại, 1 gỗ, 1 lúa mì, 2 bông.
+- Xây/nâng cấp ghi nhận CAPEX, không trừ trực tiếp lợi nhuận. Công suất nhà máy giữ nguyên 1/2/3 lô theo cấp.
 
 ## 5. Lượt và khai thác — ĐÃ CHỐT
 
-- Mỗi người có một lượt trong vòng chơi; một vòng hoàn chỉnh gồm 4 lượt.
+- Mỗi người có một lượt trong vòng chơi; một vòng hoàn chỉnh gồm lượt của tất cả công ty tham gia (2–4 lượt).
 - Người đến lượt gieo **2 xúc xắc**. Tổng xúc xắc xác định các ô được kích hoạt.
 - **Tất cả người chơi**, không chỉ người gieo, nhận tài nguyên từ khu định cư kề các ô có số tương ứng.
 - Nếu một khu định cư kề nhiều ô được kích hoạt, tính sản lượng riêng cho từng ô.
 - Mỗi người chỉ được gieo **một lần trong lượt của mình**; không thể kết thúc lượt trước khi gieo. Sau khi gieo, người chơi có thể thực hiện các hành động kinh doanh hợp lệ rồi kết thúc lượt.
-- Thứ tự lượt P1 → P2 → P3 → P4; sau P4, tăng vòng và trở lại P1. Trạng thái đã gieo được reset khi sang lượt mới.
+- Thứ tự lượt theo các ghế đã chốt khi bắt đầu; sau công ty cuối cùng, tăng vòng và trở lại công ty đầu tiên. Trạng thái đã gieo được reset khi sang lượt mới.
 - Khi tổng xúc xắc bằng **7**, **không ô nào sản xuất tài nguyên**. Không có cướp bóc hay mất tài nguyên.
 
 ## 6. Nhà máy và sản xuất — ĐÃ CHỐT PHẦN NGUYÊN TẮC

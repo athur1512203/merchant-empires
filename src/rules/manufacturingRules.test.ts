@@ -8,7 +8,7 @@ import type {GameState} from './types';
 function playing(over:Partial<GameState>={}):GameState{return{...createWaitingState(),phase:'playing',targetProfit:9_999,seed:11,rolled:true,...over}}
 function ready(over:Partial<GameState>={}):GameState{
   const s=playing(over),id=s.board.vertices[0].id;
-  s.buildings=[{vertexId:id,playerId:0,type:'settlement',level:1}];
+  s.buildings=[{vertexId:id,playerId:0,type:'settlement',level:2}];
   s.factories=[{vertexId:id,playerId:0,level:3,usedCapacity:0}];
   s.players[0]={...s.players[0],cash:500,resources:{metal:20,wood:20,wheat:20,cotton:20},products:{...s.players[0].products,fabric:5},inventoryCost:{...s.players[0].inventoryCost,metal:200,wood:100,wheat:60,cotton:80,fabric:50}};
   return s;

@@ -29,6 +29,8 @@ export function upgradeFactory(state:GameState,playerId:number,vertexId:string):
   if(index<0)return{ok:false,error:'Không tìm thấy nhà máy.'};
   const factory=state.factories[index];
   if(factory.playerId!==playerId)return{ok:false,error:'Bạn không sở hữu nhà máy này.'};
+  const home=state.buildings.find(b=>b.vertexId===vertexId);
+  if(!home||home.playerId!==playerId||home.level!==2)return{ok:false,error:'Nhà máy cần khu định cư cấp 2 thuộc sở hữu của bạn.'};
   if(factory.level>=MAX_FACTORY_LEVEL)return{ok:false,error:'Nhà máy đã đạt cấp tối đa.'};
   const nextLevel=(factory.level+1) as 2|3;
   const player=state.players.find(p=>p.id===playerId);

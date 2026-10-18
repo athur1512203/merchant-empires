@@ -1,6 +1,7 @@
+import {SettlementControls} from './ConstructionUI';
 import {useState} from 'react';
 import {PRODUCTS,PRODUCT_PRICES} from '../config/economy';
-import {CONSTRUCTION_COSTS,FACTORY_CAPACITY,FACTORY_COSTS,RAW_MATERIALS,getNpcQuote,manufactureQuote,remainingCapacity,visibleBids,type ConstructionCost} from '../rules';
+import {FACTORY_CAPACITY,RAW_MATERIALS,getNpcQuote,manufactureQuote,remainingCapacity,visibleBids} from '../rules';
 import {qty} from '../engine/economyEngine';
 import {formatGold,vi} from '../i18n/vi';
 import {useGameStore,canControl} from '../store/gameStore';
@@ -21,24 +22,18 @@ export function EconomyPanel(){
   </div>;
 }
 
-function costLabel(cost:ConstructionCost){return `${cost.gold} vàng · ${Object.entries(cost.resources).map(([r,n])=>`${n} ${vi.resources[r as Resource]}`).join(', ')}`}
 function Industry({mine,cap}:{mine:boolean;cap:number}){
   const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)??s.players[0],id=s.selectedVertex;
   const building=s.buildings.find(b=>b.vertexId===id);
   const factory=s.factories.find(f=>f.vertexId===id);
   const [product,setProduct]=useState<Product>('machinery'),[batches,setBatches]=useState(1);
   const quote=manufactureQuote(product,Number.isInteger(batches)?batches:0);
-  if(!id||!building)return <p>{vi.chooseSite}</p>;
-  if(!mine)return <p>Đây không phải khu định cư của doanh nghiệp đang lượt.</p>;
-  const nextSettle=building.level<3?CONSTRUCTION_COSTS.upgrade[(building.level+1) as 2|3]:null;
-  const nextFact=factory?factory.level<3?FACTORY_COSTS.upgrade[(factory.level+1) as 2|3]:null:FACTORY_COSTS.build;
+  if(!id||!building)return <><SettlementControls/><p>{vi.chooseSite}</p></>;
+  if(!mine)return <><SettlementControls/><p>Chọn công trình của bạn để sản xuất.</p></>;
   const busy=!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled;
-  return <>
+  return <><SettlementControls/>
     <h3>Khu định cư cấp {building.level}{factory?` · Nhà máy cấp ${factory.level}`:' · Chưa có nhà máy'}</h3>
     <p>{vi.capacity}: <b>{factory?`${cap} / ${FACTORY_CAPACITY[factory.level]} lô`:'Chưa có nhà máy — không hoạt động'}</b></p>
-    {nextSettle&&<button className="secondary" disabled={busy} onClick={()=>s.upgradeSettlement(id)}>{vi.upgradeSettlement} · {costLabel(nextSettle)}</button>}
-    {!factory&&<button className="secondary" disabled={busy} onClick={()=>s.buildFactory(id)}>{vi.buildFactory} · {costLabel(FACTORY_COSTS.build)}</button>}
-    {factory&&nextFact&&<button className="secondary" disabled={busy} onClick={()=>s.upgradeFactory(id)}>{vi.upgradeFactory} · {costLabel(nextFact)}</button>}
     {factory&&<div className="produce-box">
       <div className="section-title"><span>{vi.produce}</span><small>{vi.capacity} {cap} lô</small></div>
       {PRODUCTS.map(p=>{

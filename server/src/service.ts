@@ -1,6 +1,7 @@
 import {createHash,randomBytes,randomInt,randomUUID,timingSafeEqual} from 'node:crypto';
 import {applyAction,createWaitingState} from '../../src/rules/gameState';
 import {MULTIPLAYER_RULES_VERSION} from '../../src/rules/lobbyRules';
+import {normalizeConstructionState} from '../../src/rules/constructionCompatibility';
 import {rollDice} from '../../src/rules/diceRules';
 import type {GameAction} from '../../src/rules/types';
 import {ApiError,type Room,type Member,type RoomRepository} from './domain';
@@ -77,6 +78,7 @@ export class RoomService {
         if(room.status!=='PLAYING')throw new ApiError(409,'ROOM_NOT_PLAYING');
         action={...parsed.action,playerId:player.companyId} as GameAction;
       }
+      room.state=normalizeConstructionState(room.state);
       const result=action.type==='ROLL_DICE'?rollDice(room.state,player.companyId,this.rng):applyAction(room.state,action);
       if(!result.ok)throw new ApiError(422,'ILLEGAL_ACTION',result.error);
       if(action.type==='SUBMIT_BID')room.bids.push({id:randomUUID(),roomId:room.id,auctionId:room.state.auction.lot!.id,playerId:player.id,amount:action.amount,submittedAt:new Date()});

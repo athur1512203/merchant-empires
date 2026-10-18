@@ -10,6 +10,7 @@ import {MemoryRepository} from './memoryRepository';
 import {canPlaceSetupSettlement} from '../../src/rules/settlementRules';
 import {updateMarketPrices} from '../../src/rules/marketRules';
 import {mulberry32} from '../../src/rules/rng';
+import {CONSTRUCTION_RECIPES} from '../../src/rules/constructionProgression';
 import {openAuction} from '../../src/rules/auctionRules';
 import type {Ack,RoomUpdate,ClientAction} from '../../src/network/protocol';
 const disposers:(()=>Promise<void>)[]=[];
@@ -52,6 +53,22 @@ async function fixture(companies=[0,1,2,3]){
   return {repo,service,app,code,players,clients,updates,connect,act,started,url,sockets};
 }
 describe('Socket.IO multiplayer',()=>{
+  it('broadcasts every construction stage and rejects opponent/skip requests on server',async()=>{
+    const f=await fixture([0,3]);await f.started();
+    const room=()=>f.repo.rooms.get(f.code)!;
+    const home=room().state.buildings[0].vertexId;
+    room().state.rolled=true;room().state.players[0]={...room().state.players[0],cash:10000,resources:{metal:100,wood:100,wheat:100,cotton:100}};
+    expect((await f.act(0,{type:'BUILD_FACTORY',vertexId:home})).ok).toBe(false);
+    for(const step of CONSTRUCTION_RECIPES.slice(1)){
+      expect((await f.act(1,{type:step.type,vertexId:home})).ok).toBe(false);
+      expect((await f.act(0,{type:step.type,vertexId:home})).ok).toBe(true);
+      await expect.poll(()=>f.clients.every(c=>f.updates.get(c)?.version===room().version)).toBe(true);
+      for(const c of f.clients){expect(f.updates.get(c)!.state.buildings).toEqual(room().state.buildings);expect(f.updates.get(c)!.state.factories).toEqual(room().state.factories)}
+    }
+    expect((await f.act(0,{type:'UPGRADE_FACTORY',vertexId:home})).ok).toBe(false);
+    expect(room().state.buildings[0].level).toBe(2);expect(room().state.factories[0].level).toBe(3);
+  });
+
   it.each([[3,1],[2,0,3],[3,1,0,2]])('runs rounds, tender and reconnect with companies %j',async(...companies:number[])=>{
     const f=await fixture(companies);await f.started();
     const room=()=>f.repo.rooms.get(f.code)!;

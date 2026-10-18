@@ -34,6 +34,8 @@ export type AuctionState={status:'idle'|'open';openedAfterRound:number|null;bidS
 export type ActionResult={ok:true;state:GameState;message:string}|{ok:false;error:string};
 
 export type GameState={
+  constructionRulesVersion?:2;
+  legacyConstruction?:{buildings:unknown[];factories:unknown[]};
   roomId:string;
   seed:number;
   phase:Phase;

@@ -10,13 +10,14 @@ const payBuild=(p:Player,c:{resources:Partial<Record<Resource,number>>;cash:numb
 export const remainingCapacity=(f:Factory)=>FACTORY_CAPACITY[f.level]-f.usedCapacity;
 export function upgradeSettlement(p:Player,b:Building):Tx<{player:Player;building:Building}>{
   if(b.playerId!==p.id)return fail('Bạn không sở hữu khu định cư này.');
-  if(b.level===3)return fail('Khu định cư đã đạt cấp tối đa.');
-  const level=(b.level+1) as 2|3,c=SETTLEMENT_UPGRADE_COST[level];
+  if(b.level>=2)return fail('Khu định cư đã đạt cấp tối đa.');
+  const level=2 as const,c=SETTLEMENT_UPGRADE_COST[level];
   if(!canPay(p,c))return fail('Không đủ tài nguyên hoặc tiền mặt.');
   return ok({player:payBuild(p,c),building:{...b,level}},`Đã nâng khu định cư lên cấp ${level}.`);
 }
 export function buildFactory(p:Player,b:Building,factories:Factory[]):Tx<{player:Player;factory:Factory}>{
   if(b.playerId!==p.id)return fail('Bạn không sở hữu khu định cư này.');
+  if(b.level!==2)return fail('Khu định cư phải đạt cấp 2 trước khi xây nhà máy.');
   if(factories.some(f=>f.vertexId===b.vertexId))return fail('Khu định cư này đã có nhà máy.');
   const c=FACTORY_COST[1];
   if(!canPay(p,c))return fail('Không đủ tài nguyên hoặc tiền mặt.');
