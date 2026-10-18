@@ -26,6 +26,17 @@ async function playing(){
   return f;
 }
 describe('room API',()=>{
+  it('only the server creates contract lots and strict requests reject contract tampering',async()=>{
+    const f=await playing(),room=f.repo.rooms.get(f.code)!;
+    room.state=openAuction({...room.state,round:30},30);
+    expect(['metal','wood','wheat','cotton']).toContain(room.state.auction.lot!.product);
+    const before=structuredClone(room);
+    await f.act(0,{type:'CREATE_CONTRACT',product:'machinery',quantity:1},room.version).expect(400);
+    await f.act(0,{type:'SUBMIT_BID',amount:20,product:'machinery'},room.version).expect(400);
+    await f.act(0,{type:'DELIVER_CONTRACT',contractId:'x',quantity:1,referenceValue:999},room.version).expect(400);
+    expect(f.repo.rooms.get(f.code)).toEqual(before);
+  });
+
   it.each([1,2,3,4])('starts only with 2–4 members: %i',async(count)=>{
     const f=await fixture([3,1,0,2].slice(0,count));
     const result=await f.start().expect(count===1?409:200);

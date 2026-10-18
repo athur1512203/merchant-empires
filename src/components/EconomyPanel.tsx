@@ -1,3 +1,4 @@
+import {contractKind,DELIVERY_ROUNDS,finishedContractsUnlocked} from '../rules/economyConfig';
 import {SettlementControls} from './ConstructionUI';
 import {useState} from 'react';
 import {PRODUCTS,PRODUCT_PRICES} from '../config/economy';
@@ -82,12 +83,13 @@ function Tender(){
   const active=s.contracts.filter(c=>c.status==='active');
   return <>
     <div className="section-title"><span>{vi.industrialTender}</span><small className={s.auction.status==='open'?'live':''}>{s.auction.status==='open'?'ĐANG ĐẤU THẦU':'CHỜ PHIÊN'}</small></div>
+    <p role="status">{finishedContractsUnlocked(s.round)?'Đã mở khóa hợp đồng thành phẩm từ vòng 31. Nguyên liệu và thành phẩm cùng tham gia đấu thầu.':'Vòng 1–30: chỉ đấu thầu nguyên liệu. Thành phẩm mở khóa từ vòng 31, phiên đầu có thể xuất hiện là cuối vòng 33.'}</p>
     {s.auction.status==='open'&&lot&&<>
-      <h3>{lot.name}</h3>
+      <small className="contract-kind">{contractKind(lot)}</small><h3>{lot.name}</h3>
       <div className="contract-grid">
-        <span><small>{vi.requires}</small><b>{lot.quantity} {vi.products[lot.product]}</b></span>
+        <span><small>{vi.requires}</small><b>{lot.quantity} {vi.commodities[lot.product]}</b></span>
         <span><small>Giá trị tham khảo</small><b>{formatGold(lot.referenceValue)}</b></span>
-        <span><small>Trạng thái</small><b>Kín</b></span>
+        <span><small>{vi.deadline}</small><b>{DELIVERY_ROUNDS} vòng sau phiên · hết vòng {(s.auction.openedAfterRound??s.round)+DELIVERY_ROUNDS}</b></span><span><small>Trạng thái</small><b>Kín</b></span>
       </div>
       {mine.length===0&&s.seats[s.auction.bidSeat]===me.id&&<>
         <div className="qty-row"><input type="number" min={1} max={lot.referenceValue} value={bid} onChange={e=>setBid(Number(e.target.value)||0)}/><span>{vi.yourBid}</span></div>
@@ -102,9 +104,9 @@ function Tender(){
     {active.map(c=>{
       const remaining=c.quantity-c.delivered,mineC=c.winnerId===me.id;
       return <div key={c.id} className="contract-grid">
-        <span><small>{c.name}</small><b>{c.delivered}/{c.quantity} {vi.products[c.product]}</b></span>
-        <span><small>{vi.deadline}</small><b>{vi.round} {c.deadlineRound}</b></span>
-        {mineC&&<div className="qty-row"><input type="number" min={1} max={remaining} value={qtyD} onChange={e=>setQtyD(Number(e.target.value)||1)}/><button className="primary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled} onClick={()=>s.deliver(c.id,qtyD)}>{vi.deliverContract}</button></div>}
+        <span><small>{contractKind(c)} · {c.name}</small><b>{c.delivered}/{c.quantity} {vi.commodities[c.product]}</b></span>
+        <span><small>{vi.deadline}</small><b>Hết {vi.round.toLowerCase()} {c.deadlineRound}</b></span><span><small>Giá tham chiếu</small><b>{formatGold(c.referenceValue)}</b></span>
+        {mineC&&<div className="qty-row"><input aria-label={"Số lượng giao "+vi.commodities[c.product]} type="number" min={1} max={remaining} value={qtyD} onChange={e=>setQtyD(Number(e.target.value)||1)}/><button className="primary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(qtyD)||qtyD<1||qtyD>remaining} onClick={()=>s.deliver(c.id,qtyD)}>{vi.deliverContract}</button></div>}
       </div>;
     })}
     {s.contracts.filter(c=>c.status==='completed'||c.status==='failed').slice(-3).map(c=><p key={c.id}>{c.name}: {c.status==='completed'?`Hoàn thành · ${formatGold(c.winningBid??0)}`:'Thất bại · phạt 20%'}{c.paid?' · đã thanh toán':''}</p>)}

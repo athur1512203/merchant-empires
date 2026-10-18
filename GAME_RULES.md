@@ -74,10 +74,15 @@
 
 ## 8. Đấu thầu và hợp đồng — ĐÃ CHỐT PHẦN CỐT LÕI
 
-- Đấu thầu diễn ra **mỗi 3 vòng**.
+- Đấu thầu diễn ra **mỗi 3 vòng hoàn chỉnh**, mỗi phiên **một lô hợp đồng**.
+- **Vòng 1–30:** lô mới chỉ gồm nguyên liệu thô: Metal, Wood, Wheat, Cotton.
+- **Từ vòng 31:** cho phép cả nguyên liệu thô và sáu thành phẩm hiện tại; không loại nguyên liệu khỏi danh mục. Phiên đầu có thể xuất hiện thành phẩm là **cuối vòng 33**.
+- Bốn mẫu nguyên liệu thử nghiệm (BALANCE_PROVISIONAL trong economyConfig): Metal 5 / 75 vàng; Wood 6 / 84 vàng; Wheat 8 / 104 vàng; Cotton 6 / 84 vàng. Giữ nguyên các mẫu thành phẩm.
+- Backend quyết định lô mới theo vòng đã hoàn tất. Hợp đồng/lô đã tồn tại giữ nguyên loại hàng và điều khoản. Chỉ các công ty tham gia trận 2–4 người cần gửi giá hoặc bỏ lượt.
 - Đấu thầu kín; **giá chào hợp lệ thấp nhất thắng**, hòa giá thì người gửi trước thắng.
 - Công ty thắng phải giao hàng trong **3 vòng hoàn chỉnh** sau khi có kết quả.
-- Có thể giao từng phần. Chỉ thanh toán giá trúng thầu sau khi giao đủ hàng.
+- Có thể giao từng phần, trừ đúng kho nguyên liệu hoặc thành phẩm. Chỉ ghi nhận doanh thu và thanh toán giá trúng thầu sau khi giao đủ hàng.
+- Giá vốn bình quân của từng phần giao được chuyển từ tồn kho sang giá vốn chờ ghi nhận trên hợp đồng. Khi hoàn tất, ghi nhận toàn bộ giá vốn đúng một lần. Khi thất bại và hàng đã giao không được hoàn lại theo cấu hình hiện hành, ghi nhận giá vốn phần đó cùng khoản phạt, không trừ vàng giá vốn lần nữa.
 - **Không khóa tồn kho** khi nhận hợp đồng: người chơi vẫn có quyền bán hàng đang có cho NPC.
 - Nếu không giao đủ đúng hạn, bị phạt **20% giá trị trúng thầu**.
 - Nếu không đủ tiền trả phạt, phần còn lại là **công nợ phạt hợp đồng**, ưu tiên khấu trừ từ khoản thu tiếp theo. Đây **không phải khoản vay**, không phát sinh lãi vay.
@@ -93,7 +98,7 @@
 - Lợi nhuận được ghi nhận khi có doanh thu thực hiện, sau khi trừ giá vốn liên quan và chi phí gia công tương ứng; tránh tính trùng phí sản xuất.
 - Tiền phạt hợp đồng là chi phí làm giảm lợi nhuận tích lũy.
 - Kiểm tra điều kiện thắng khi lợi nhuận tích lũy được cập nhật; mục tiêu do chủ phòng đặt và phải > 0.
-- Chi tiết kế toán giá vốn nguyên liệu tự khai thác và nguyên liệu mua vào cần chọn một quy tắc nhất quán trước khi triển khai EconomyRules.
+- Nguyên liệu tự khai thác có giá vốn 0. Nguyên liệu mua từ NPC cộng giá mua vào giá trị tồn kho. Bán/sản xuất/xây dựng/giao hợp đồng phân bổ giá vốn bình quân gia quyền theo cơ chế làm tròn hiện tại; không tính trùng giá vốn đã xuất kho. Phí sản xuất được vốn hóa vào thành phẩm như hiện tại.
 
 ## 10. Giao diện — ĐÃ CHỐT
 

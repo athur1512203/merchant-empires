@@ -3,6 +3,7 @@ import {PrismaClient} from '@prisma/client';
 import {PrismaRoomRepository} from '../src/prismaRepository';
 import {RoomService} from '../src/service';
 import {canPlaceSetupSettlement} from '../../src/rules/settlementRules';
+import {generateContract} from '../../src/rules/economyConfig';
 import {CONSTRUCTION_RECIPES} from '../../src/rules/constructionProgression';
 import {openAuction} from '../../src/rules/auctionRules';
 
@@ -102,4 +103,28 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL integration',()=>{
     const state=migrated.state as unknown as {buildings:{level:number}[];legacyConstruction:{buildings:{level:number}[]}};
     expect(state.buildings[0].level).toBe(2);expect(state.legacyConstruction.buildings[0].level).toBe(3);
   },120_000);
+
+  it('persists partial raw delivery basis and accepts legacy contracts without rewriting reads',async()=>{
+    const host=await a.create({displayName:'Task08 accounting host',companyId:0});roomIds.push(host.room.id);
+    const guest=await a.join(host.room.roomCode,{displayName:'Task08 accounting guest',companyId:1}),code=host.room.roomCode;
+    await a.execute(code,host.reconnectToken,'task08-account-start',{expectedVersion:0,targetProfit:999999},true);
+    await repo.transact(code,r=>{
+      r.state.phase='playing';r.state.round=4;r.state.rolled=true;
+      r.state.contracts=[{...generateContract(()=>0,3,1),status:'active',winnerId:0,winningBid:75,deadlineRound:6}];
+      r.state.players[0].resources.metal=5;r.state.players[0].inventoryCost.metal=55;r.version++;
+    });
+    const version=await repo.transact(code,r=>r.version),id=await repo.transact(code,r=>r.state.contracts[0].id);
+    await a.execute(code,host.reconnectToken,'task08-account-part',{expectedVersion:version,action:{type:'DELIVER_CONTRACT',contractId:id,quantity:2}});
+    const saved=await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}});
+    expect(saved.state).toMatchObject({contracts:[{delivered:2,deliveredCost:22,paid:false}],players:[{resources:{metal:3},inventoryCost:{metal:33},cash:0,revenue:0,costs:0,profit:0},{}]});
+    const recovered=await b.get(code,host.reconnectToken,true);expect(recovered).toMatchObject({state:{contracts:[{deliveredCost:22}]}});
+    expect(await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}})).toEqual(saved);
+    await b.execute(code,host.reconnectToken,'task08-account-done',{expectedVersion:version+1,action:{type:'DELIVER_CONTRACT',contractId:id,quantity:3}});
+    const done=await b.get(code,host.reconnectToken,true);
+    expect(done).toMatchObject({state:{contracts:[{paid:true,deliveredCost:55}],players:[{cash:75,revenue:75,costs:55,profit:20,resources:{metal:0},inventoryCost:{metal:0}},{}]}});
+    await repo.transact(code,r=>{delete r.state.contracts[0].deliveredCost;r.version++});
+    const legacy=await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}});
+    await a.get(code,guest.reconnectToken,true);
+    expect(await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}})).toEqual(legacy);
+  },120000);
 });

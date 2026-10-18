@@ -1,3 +1,4 @@
+import type {Resource} from '../types';
 import {describe,expect,it} from 'vitest';
 import {AUCTION_EVERY_ROUNDS,DELIVERY_ROUNDS,generateContract,penaltyAmount} from './economyConfig';
 import {applyAction,createWaitingState} from './gameState';
@@ -21,7 +22,7 @@ describe('Contracts & Auctions',()=>{
   });
   it('cùng seed tạo cùng hợp đồng hợp lệ',()=>{
     const a=generateContract(mulberry32((21+3*13_331)>>>0),3,1),b=generateContract(mulberry32((21+3*13_331)>>>0),3,1);
-    expect(a).toEqual(b);expect(a.quantity).toBeGreaterThan(0);expect(['machinery','rail','furniture','flour','fabric','clothing']).toContain(a.product);
+    expect(a).toEqual(b);expect(a.quantity).toBeGreaterThan(0);expect(['metal','wood','wheat','cotton']).toContain(a.product);
   });
   it('mỗi người một giá, không gửi thay người khác, từ chối giá không hợp lệ, giữ kín trước khi đóng',()=>{
     let s=playTurns(playing(),12);
@@ -53,12 +54,12 @@ describe('Contracts & Auctions',()=>{
     for(const [id,amount] of [[0,11],[1,40],[2,40]] as const){const a=act(s,{type:'SUBMIT_BID',playerId:id,amount});if(!a.ok)throw Error();s=a.state}
     {const a=act(s,{type:'SKIP_BID',playerId:3});if(!a.ok)throw Error();s=a.state}
     const c=s.contracts[0];expect(c.winnerId).toBe(0);
-    s.players[0]={...s.players[0],products:{...s.players[0].products,[c.product]:c.quantity+2},inventoryCost:{...s.players[0].inventoryCost,[c.product]:c.quantity*10},cash:0};
+    s.players[0]={...s.players[0],resources:{...s.players[0].resources,[c.product]:c.quantity+2},inventoryCost:{...s.players[0].inventoryCost,[c.product]:c.quantity*10},cash:0};
     s={...s,rolled:true};
     expect(act(s,{type:'DELIVER_CONTRACT',playerId:1,contractId:c.id,quantity:1}).ok).toBe(false);
     const first=act(s,{type:'DELIVER_CONTRACT',playerId:0,contractId:c.id,quantity:1});expect(first.ok).toBe(true);if(!first.ok)return;
     expect(first.state.players[0].cash).toBe(0);expect(first.state.players[0].revenue).toBe(0);
-    expect(first.state.players[0].products[c.product]).toBe(c.quantity+1);
+    expect(first.state.players[0].resources[c.product as Resource]).toBe(c.quantity+1);
     expect(first.state.contracts[0].delivered).toBe(1);
     const rest=c.quantity-1;
     const done=act(first.state,{type:'DELIVER_CONTRACT',playerId:0,contractId:c.id,quantity:rest});expect(done.ok).toBe(true);if(!done.ok)return;
@@ -89,7 +90,7 @@ describe('Contracts & Auctions',()=>{
     const r0=act(s,{type:'SUBMIT_BID',playerId:0,amount:5});if(!r0.ok)throw Error();s=r0.state;
     for(const id of [1,2,3]){const r=act(s,{type:'SKIP_BID',playerId:id});if(!r.ok)throw Error();s=r.state}
     const c=s.contracts[0];
-    s.players[0]={...s.players[0],products:{...s.players[0].products,[c.product]:c.quantity},inventoryCost:{...s.players[0].inventoryCost,[c.product]:0}};
+    s.players[0]={...s.players[0],resources:{...s.players[0].resources,[c.product]:c.quantity},inventoryCost:{...s.players[0].inventoryCost,[c.product]:0}};
     const d=act({...s,rolled:true},{type:'DELIVER_CONTRACT',playerId:0,contractId:c.id,quantity:c.quantity});
     expect(d.ok&&d.state.phase).toBe('finished');
     if(!d.ok)return;

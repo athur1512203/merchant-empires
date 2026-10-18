@@ -4,6 +4,9 @@ import {spawn,type ChildProcess} from 'node:child_process';
 import {createServer} from 'node:net';
 import {once} from 'node:events';
 import {writeFile} from 'node:fs/promises';
+import {openAuction} from '../../src/rules/auctionRules';
+import {isRawMaterial} from '../../src/rules/economyConfig';
+import {PrismaRoomRepository} from '../src/prismaRepository';
 import {canPlaceSetupSettlement} from '../../src/rules/settlementRules';
 import type {GameState} from '../../src/rules/types';
 import type {RoomService} from '../src/service';
@@ -110,4 +113,63 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     await writeFile(`server/neon-verification-${count}.json`,JSON.stringify({verifiedAt:new Date().toISOString(),roomCode:code,roomId:id,players:count,actions:count+3,version:count+3,phase:'playing',restart:'PASS',realtimeClients:count,realtimeReconnect:'PASS',exactSnapshotRestored:true,idempotencyAfterRestart:'PASS',existingRoomsUnchanged:baseline.length,tablesVerified:tables.map(t=>t.tablename).sort(),completedMigrations:Number(migrations[0].count)},null,2)+'\n');
     console.log(`NEON_VERIFIED roomCode=${code} roomId=${id} players=${count} actions=${count+3} version=${count+3} restart=PASS existingRoomsUnchanged=${baseline.length}`);
   },180_000);
+
+  it.each([[2,3],[3,30],[4,33]])('restores a sealed tender with %i players after round %i',async(count,round)=>{
+    sockets.splice(0).forEach(s=>s.disconnect());updates.clear();
+    const baseline=await db.gameRoom.findMany({select:{id:true,updatedAt:true,snapshot:{select:{version:true,updatedAt:true}}}});
+    const listener=createServer();listener.listen(0,'127.0.0.1');await once(listener,'listening');
+    const address=listener.address();if(!address||typeof address==='string')throw new Error('No test port');
+    const port=address.port;await new Promise<void>(resolve=>listener.close(()=>resolve()));await start(port);
+    const base='http://127.0.0.1:'+port+'/api/rooms';
+    async function http<T=StateResponse>(path:string,body?:unknown,token?:string,key?:string):Promise<T>{
+      const response=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(key?{'Idempotency-Key':key}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+      expect(response.status).toBe(body!==undefined&&(path===''||path.endsWith('/join'))?201:200);return await response.json() as T;
+    }
+    const host=await http<Created>('',{displayName:'TASK08-TENDER-HOST',companyId:0}),code=host.room.roomCode,id=host.room.id,players=[host];
+    for(let companyId=1;companyId<count;companyId++)players.push(await http<Created>('/'+code+'/join',{displayName:'TASK08-TENDER-'+companyId,companyId}));
+    await http('/'+code+'/start',{expectedVersion:0,targetProfit:999999},host.reconnectToken,'task08-start');
+    for(let who=0;who<count;who++){
+      const stored=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}}),state=stored.state as unknown as GameState;
+      const vertexId=state.board.vertices.find(v=>canPlaceSetupSettlement(state,who,v.id).ok)!.id;
+      await http('/'+code+'/actions',{expectedVersion:stored.version,action:{type:'placeSetupSettlement',vertexId}},players[who].reconnectToken,'task08-setup-'+who);
+    }
+    const repo=new PrismaRoomRepository(db);
+    await repo.transact(code,r=>{
+      // Only this freshly created test room is advanced to the requested boundary.
+      expect(r.players.every(p=>p.displayName.startsWith('TASK08-TENDER-'))).toBe(true);
+      r.state=openAuction({...r.state,round},round);
+      if(round===33)for(let seed=0;isRawMaterial(r.state.auction.lot!.product);seed++)r.state=openAuction({...r.state,seed,auction:{...r.state.auction,status:'idle',openedAfterRound:null}},round);
+      r.version++;
+    });
+    for(const player of players){
+      const socket=io('http://127.0.0.1:'+port,{auth:{roomCode:code,reconnectToken:player.reconnectToken},reconnectionDelay:250,reconnectionDelayMax:1000});
+      sockets.push(socket);socket.on('room:update',(update:RoomUpdate)=>updates.set(socket,update));
+    }
+    await expect.poll(()=>sockets.every(s=>s.connected&&updates.has(s)),{timeout:45000}).toBe(true);
+    const beforeBid=await http('/'+code+'/state',undefined,host.reconnectToken);
+    await http('/'+code+'/actions',{expectedVersion:beforeBid.version,action:{type:'SUBMIT_BID',amount:30}},host.reconnectToken,'task08-first-bid');
+    const own=await http('/'+code+'/state',undefined,host.reconnectToken),other=await http('/'+code+'/state',undefined,players[1].reconnectToken);
+    expect(own.state.auction).toMatchObject({status:'open',bidSeat:1,sealedBids:[{playerId:0,amount:30}]});expect(other.state.auction.sealedBids).toEqual([]);
+    const persisted=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}}),pid=child!.pid;
+    await stop();await start(port);expect(child!.pid).not.toBe(pid);
+    expect(await http('/'+code+'/state',undefined,host.reconnectToken)).toEqual(own);
+    expect(await http('/'+code+'/state',undefined,players[1].reconnectToken)).toEqual(other);
+    expect(await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}})).toEqual(persisted);
+    for(const socket of sockets){updates.delete(socket);socket.emit('room:sync')}
+    await expect.poll(()=>sockets.every(s=>s.connected&&updates.get(s)?.version===own.version),{timeout:45000}).toBe(true);
+    expect(updates.get(sockets[0])!.state.auction.sealedBids).toHaveLength(1);
+    for(const socket of sockets.slice(1))expect(updates.get(socket)!.state.auction.sealedBids).toEqual([]);
+    const replay=await http('/'+code+'/actions',{expectedVersion:beforeBid.version,action:{type:'SUBMIT_BID',amount:30}},host.reconnectToken,'task08-first-bid');
+    expect(replay.replayed).toBe(true);expect(await db.auctionBid.count({where:{roomId:id}})).toBe(1);
+    let version=own.version;
+    for(let who=1;who<count;who++)await http('/'+code+'/actions',{expectedVersion:version++,action:who===1?{type:'SUBMIT_BID',amount:30}:{type:'SKIP_BID'}},players[who].reconnectToken,'task08-decision-'+who);
+    const closed=await http('/'+code+'/state',undefined,host.reconnectToken);
+    expect(closed.state.auction.status).toBe('idle');expect(closed.state.round).toBe(round+1);
+    expect(closed.state.contracts.at(-1)).toMatchObject({winnerId:0,winningBid:30,deadlineRound:round+3});
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===closed.version),{timeout:30000}).toBe(true);
+    for(const socket of sockets)expect(updates.get(socket)!.state.contracts).toEqual(closed.state.contracts);
+    const existing=await db.gameRoom.findMany({where:{id:{in:baseline.map(r=>r.id)}},select:{id:true,updatedAt:true,snapshot:{select:{version:true,updatedAt:true}}}});
+    expect(existing.sort((a,b)=>a.id.localeCompare(b.id))).toEqual(baseline.sort((a,b)=>a.id.localeCompare(b.id)));
+    await stop();
+  },180000);
 });
