@@ -2,7 +2,7 @@ import type {BoardLogic,GameAction,GameState} from '../rules/types';
 export type PublicGameState=Omit<GameState,'seed'|'board'>&{board:Omit<BoardLogic,'seed'>};
 export type RoomInfo={id:string;roomCode:string;hostPlayerId:string;status:'WAITING'|'PLAYING'|'FINISHED';maxPlayers:number;version:number;players:{id:string;displayName:string;companyId:number;seatIndex:number}[]};
 export type Session={roomCode:string;reconnectToken:string};
-export type RoomUpdate={room:RoomInfo;version:number;state:PublicGameState;self:{playerId:string;companyId:number};onlinePlayerIds?:string[]};
+export type RoomUpdate={rulesVersion?:string;room:RoomInfo;version:number;state:PublicGameState;self:{playerId:string;companyId:number};onlinePlayerIds?:string[]};
 type WithoutActor<T>=T extends {playerId:number}?Omit<T,'playerId'>:never;
 export type ClientAction=WithoutActor<GameAction>;
 export type Command={idempotencyKey:string;expectedVersion:number;action:ClientAction};

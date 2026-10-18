@@ -24,7 +24,7 @@ export function createWaitingState(roomId='local'):GameState{
 
 export function startMatch(state:GameState,targetProfit:number,seed:number,roomId=state.roomId,companyIds:number[]=state.seats):ActionResult{
   if(state.phase!=='waiting')return{ok:false,error:'Trận đấu đã bắt đầu.'};
-  if(!Number.isInteger(targetProfit)||targetProfit<=0)return{ok:false,error:'Mục tiêu lợi nhuận phải là số nguyên dương.'};
+  if(!Number.isSafeInteger(targetProfit)||targetProfit<=0)return{ok:false,error:'Mục tiêu lợi nhuận phải là số nguyên dương.'};
   const seats=[...companyIds];
   if(seats.length<2||seats.length>4||new Set(seats).size!==seats.length||seats.some(id=>!COMPANIES.some(c=>c.id===id)))return{ok:false,error:'Cần từ 2 đến 4 công ty khác nhau.'};
   return{ok:true,message:'Giai đoạn đặt khu định cư ban đầu.',state:{

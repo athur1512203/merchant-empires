@@ -1,3 +1,4 @@
+import {MULTIPLAYER_RULES_VERSION} from '../rules/lobbyRules';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {createWaitingState} from '../rules/gameState';
 import type {RoomUpdate} from '../network/protocol';
@@ -6,7 +7,7 @@ vi.mock('socket.io-client',()=>({io:()=>({connected:true,on:(name:string,callbac
 const session={roomCode:'ABCDEFGH',reconnectToken:'test-reconnect-token'};
 function update(version=1,companyId=0):RoomUpdate{
   const {seed:_seed,board,...state}=createWaitingState('test-room');const {seed:_boardSeed,...publicBoard}=board;
-  return {version,self:{playerId:'self',companyId},room:{id:'test-room',roomCode:session.roomCode,hostPlayerId:'self',version,status:'PLAYING',maxPlayers:4,players:[{id:'self',displayName:'Player',companyId,seatIndex:0}]},state:{...state,board:publicBoard,phase:'playing'}};
+  return {rulesVersion:MULTIPLAYER_RULES_VERSION,version,self:{playerId:'self',companyId},room:{id:'test-room',roomCode:session.roomCode,hostPlayerId:'self',version,status:'PLAYING',maxPlayers:4,players:[{id:'self',displayName:'Player',companyId,seatIndex:0}]},state:{...state,board:publicBoard,phase:'playing'}};
 }
 beforeEach(()=>{
   vi.resetModules();vi.clearAllMocks();transport.callbacks.clear();const storage=new Map([['merchant-empires-session-v1',JSON.stringify(session)]]);
@@ -14,6 +15,43 @@ beforeEach(()=>{
   transport.send.mockImplementation(()=>new Promise(()=>{}));
 });
 describe('authoritative frontend store',()=>{
+  it.each([1,2,3,4])('validates and sends start correctly with %i members',async(count)=>{
+    const {useGameStore,restoreConnection}=await import('./gameStore');
+    restoreConnection();const next=update(0);next.room.status='WAITING';next.state.phase='waiting';
+    next.room.players=Array.from({length:count},(_,i)=>({id:i===0?'self':'player-'+i,displayName:'P'+i,companyId:i,seatIndex:i}));
+    transport.callbacks.get('room:update')!(next);
+    const {startBlockReason}=await import('../rules/lobbyRules');
+    expect(startBlockReason(useGameStore.getState(),1000)===null).toBe(count>=2);
+    useGameStore.getState().start(1000);
+    expect(transport.send).toHaveBeenCalledTimes(count===1?0:1);
+  });
+  it('accepts same-version lobby join broadcasts and immediately enables host start',async()=>{
+    const {useGameStore,restoreConnection}=await import('./gameStore');
+    const {startBlockReason}=await import('../rules/lobbyRules');
+    restoreConnection();const next=update(0);next.room.status='WAITING';next.state.phase='waiting';
+    transport.callbacks.get('room:update')!(next);
+    expect(startBlockReason(useGameStore.getState(),1000)).toContain('ít nhất 2');
+    const joined=structuredClone(next);joined.room.players.push({id:'second',displayName:'Second',companyId:3,seatIndex:1});
+    expect(useGameStore.getState().room!.players).toHaveLength(1);
+    transport.callbacks.get('room:update')!(joined);
+    expect(useGameStore.getState().room!.players).toHaveLength(2);
+    expect(startBlockReason(useGameStore.getState(),1000)).toBeNull();
+    useGameStore.getState().start(1000);expect(transport.send).toHaveBeenCalledTimes(1);
+  });
+  it.each(['host','target','connection','busy','rules'])('shows a specific start blocker for %s',async(blocker)=>{
+    const {useGameStore,restoreConnection}=await import('./gameStore');restoreConnection();
+    const next=update(0);next.room.status='WAITING';next.state.phase='waiting';
+    next.room.players.push({id:'second',displayName:'Second',companyId:3,seatIndex:1});
+    if(blocker==='host')next.room.hostPlayerId='second';
+    if(blocker==='rules')delete next.rulesVersion;
+    transport.callbacks.get('room:update')!(next);
+    if(blocker==='connection')useGameStore.setState({connection:'syncing'});
+    if(blocker==='busy')useGameStore.setState({busy:true});
+    useGameStore.getState().start(blocker==='target'?1.5:1000);
+    expect(transport.send).not.toHaveBeenCalled();
+    expect(useGameStore.getState().notice).toBeTruthy();
+  });
+
   it('restores tab identity and sends actions without changing game state optimistically',async()=>{
     const {useGameStore,restoreConnection}=await import('./gameStore');restoreConnection();
     transport.callbacks.get('room:update')!(update());

@@ -1,3 +1,4 @@
+import {startBlockReason} from '../rules/lobbyRules';
 import {API_ORIGIN} from '../network/config';
 import {create} from 'zustand';
 import {io,type Socket} from 'socket.io-client';
@@ -11,7 +12,7 @@ type Connection='offline'|'connecting'|'syncing'|'connected'|'replaced'|'error';
 function read<T>(key:string):T|null{try{return JSON.parse(sessionStorage.getItem(key)??'null') as T|null}catch{return null}}
 function save(key:string,value:unknown){try{if(value===null)sessionStorage.removeItem(key);else sessionStorage.setItem(key,JSON.stringify(value))}catch{/* storage may be unavailable */}}
 const initial=createWaitingState(),initialView=visualFromBoard(initial.board);
-const base=()=>({phase:initial.phase,seats:initial.seats,board:initial.board,...initialView,started:false,setup:false,ended:false,targetProfit:null as number|null,winnerId:null as number|null,localPlayerId:0,round:1,turn:0,dice:null as [number,number]|null,rolled:false,activeHexes:[] as string[],players:initial.players,buildings:initial.buildings,factories:initial.factories,resourcePrices:initial.resourcePrices,marketPressure:initial.marketPressure,auction:initial.auction,contracts:initial.contracts,priceHistory:[] as PriceChange[],trades:[] as Trade[],logs:[] as Log[],selectedHex:null as string|null,selectedVertex:null as string|null,mode:'inspect' as 'inspect'|'settlement',historyOpen:false,notice:null as string|null,room:null as RoomInfo|null,playerId:null as string|null,version:-1,connection:'offline' as Connection,busy:false,onlinePlayerIds:[] as string[]});
+const base=()=>({phase:initial.phase,seats:initial.seats,board:initial.board,...initialView,started:false,setup:false,ended:false,targetProfit:null as number|null,winnerId:null as number|null,localPlayerId:0,round:1,turn:0,dice:null as [number,number]|null,rolled:false,activeHexes:[] as string[],players:initial.players,buildings:initial.buildings,factories:initial.factories,resourcePrices:initial.resourcePrices,marketPressure:initial.marketPressure,auction:initial.auction,contracts:initial.contracts,priceHistory:[] as PriceChange[],trades:[] as Trade[],logs:[] as Log[],selectedHex:null as string|null,selectedVertex:null as string|null,mode:'inspect' as 'inspect'|'settlement',historyOpen:false,notice:null as string|null,room:null as RoomInfo|null,playerId:null as string|null,version:-1,connection:'offline' as Connection,busy:false,rulesVersion:null as string|null,onlinePlayerIds:[] as string[]});
 type State=ReturnType<typeof base>&{
   createRoom:(displayName:string,companyId:number)=>Promise<void>;joinRoom:(code:string,displayName:string,companyId:number)=>Promise<void>;
   start:(targetProfit:number)=>void;newMatch:()=>void;reconnect:()=>void;
@@ -28,7 +29,7 @@ function receive(update:RoomUpdate){
   if(previous.room?.id===update.room.id&&update.version<previous.version)return;
   const next=update.state,board={...next.board,seed:0},vis=visualFromBoard(board),newVersion=update.version>previous.version;
   const prices=newVersion?Object.entries(next.resourcePrices).filter(([r,p])=>previous.resourcePrices[r as Resource]!==p).map(([resource,to])=>({resource:resource as Resource,from:previous.resourcePrices[resource as Resource],to,round:next.round,percent:(to/previous.resourcePrices[resource as Resource]-1)*100})):[];
-  useGameStore.setState({room:update.room,playerId:update.self.playerId,localPlayerId:update.self.companyId,version:update.version,connection:'connected',onlinePlayerIds:update.onlinePlayerIds??[],
+  useGameStore.setState({room:update.room,rulesVersion:update.rulesVersion??null,playerId:update.self.playerId,localPlayerId:update.self.companyId,version:update.version,connection:'connected',onlinePlayerIds:update.onlinePlayerIds??[],
     phase:next.phase,seats:next.seats,board,...vis,started:next.phase!=='waiting',setup:next.phase==='setup',ended:next.phase==='finished',targetProfit:next.targetProfit||null,winnerId:next.winnerId,
     round:next.round,turn:next.turnIndex,dice:next.dice,rolled:next.rolled,players:next.players,buildings:next.buildings,factories:next.factories,resourcePrices:next.resourcePrices,marketPressure:next.marketPressure,auction:next.auction,contracts:next.contracts,
     activeHexes:next.dice&&next.dice[0]+next.dice[1]!==7?next.board.hexes.filter(h=>h.number===next.dice![0]+next.dice![1]).map(h=>h.id):[],
@@ -89,7 +90,7 @@ function enqueue(event:Pending['event'],body:{action?:ClientAction;targetProfit?
 export const useGameStore=create<State>((set,get)=>({...base(),
   createRoom:(name,company)=>enter('',name,company),joinRoom:(code,name,company)=>enter(`/${encodeURIComponent(code)}/join`,name,company),
   reconnect:()=>{if(session)connect(session);else restoreConnection()},
-  start:targetProfit=>{const s=get();if(s.room?.hostPlayerId===s.playerId&&s.room.players.length>=2&&s.room.players.length<=4)enqueue('game:start',{targetProfit})},
+  start:targetProfit=>{const s=get();const reason=startBlockReason(s,targetProfit);if(reason){set({notice:reason});return}enqueue('game:start',{targetProfit})},
   newMatch:()=>{const socket=active;active=undefined;socket?.disconnect();clearTimeout(retryTimer);pending=null;session=null;sending=false;save(SESSION_KEY,null);save(PENDING_KEY,null);set(base())},
   roll:()=>request({type:'ROLL_DICE'}),endTurn:()=>request({type:'END_TURN'}),
   setMode:mode=>{if(canControl(get()))set({mode,selectedVertex:null})},selectHex:selectedHex=>set({selectedHex}),selectVertex:selectedVertex=>set({selectedVertex}),locateAsset:selectedVertex=>set({selectedVertex}),

@@ -1,3 +1,4 @@
+import {MULTIPLAYER_RULES_VERSION} from '../../src/rules/lobbyRules';
 import express,{type ErrorRequestHandler} from 'express';
 import {ZodError} from 'zod';
 import {ApiError} from './domain';
@@ -16,7 +17,7 @@ export function createApp(service:RoomService){
     }
     if(req.method==='OPTIONS'){res.sendStatus(204);return}next();
   });
-  app.get('/api/health',(_req,res)=>{res.json({status:'ok'})});
+  app.get('/api/health',(_req,res)=>{res.json({status:'ok',rulesVersion:MULTIPLAYER_RULES_VERSION})});
   app.use((_req,res,next)=>{res.setHeader('Cache-Control','no-store');next()});
   app.use(express.json({limit:'16kb'}));
   const token=(req:express.Request)=>{

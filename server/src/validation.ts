@@ -16,6 +16,6 @@ export const actionSchema=z.discriminatedUnion('type',[
 ]);
 export const memberSchema=z.object({displayName:z.string().trim().min(1).max(60),companyId:z.number().int().min(0).max(3)}).strict();
 export const actionRequest=z.object({expectedVersion:z.number().int().min(0).max(2_147_483_646),action:actionSchema}).strict();
-export const startRequest=z.object({expectedVersion:z.number().int().min(0).max(2_147_483_646),targetProfit:positive}).strict();
+export const startRequest=z.object({expectedVersion:z.number().int().min(0).max(2_147_483_646),targetProfit:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict();
 export const roomCodeSchema=z.string().regex(/^[A-Z2-9]{8}$/);
 export const keySchema=z.string().min(8).max(128).regex(/^[a-zA-Z0-9_-]+$/);

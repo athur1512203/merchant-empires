@@ -1,5 +1,6 @@
 import {createHash,randomBytes,randomInt,randomUUID,timingSafeEqual} from 'node:crypto';
 import {applyAction,createWaitingState} from '../../src/rules/gameState';
+import {MULTIPLAYER_RULES_VERSION} from '../../src/rules/lobbyRules';
 import {rollDice} from '../../src/rules/diceRules';
 import type {GameAction} from '../../src/rules/types';
 import {ApiError,type Room,type Member,type RoomRepository} from './domain';
@@ -14,7 +15,7 @@ export class RoomService {
   async sessions(code:string,tokens:string[]){
     return this.repository.transact(code,room=>tokens.map(token=>{
       const player=this.member(room,token);
-      return {room:roomView(room),...stateView(room,player),self:{playerId:player.id,companyId:player.companyId}};
+      return {rulesVersion:MULTIPLAYER_RULES_VERSION,room:roomView(room),...stateView(room,player),self:{playerId:player.id,companyId:player.companyId}};
     }));
   }
   async availability(code:string){

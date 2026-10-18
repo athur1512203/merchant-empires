@@ -1,3 +1,4 @@
+import {startBlockReason} from '../rules/lobbyRules';
 import {API_ORIGIN} from '../network/config';
 import {useEffect,useState} from 'react';
 import {COMPANIES} from '../rules/types';
@@ -16,13 +17,13 @@ export function Lobby(){
     }catch{if(live)setLookup('Không thể kiểm tra phòng.')}}
     void refresh();const timer=setInterval(()=>void refresh(),3000);return()=>{live=false;abort.abort();clearInterval(timer)};
   },[mode,code]);
-  const connected=s.connection==='connected',host=s.room?.hostPlayerId===s.playerId;
+  const connected=s.connection==='connected',startReason=startBlockReason(s,Number(target)),host=s.room?.hostPlayerId===s.playerId;
   return <div className="start-overlay lobby-overlay"><section className="start-card lobby-card" aria-label="Sảnh multiplayer">
     <small>MERCHANT EMPIRES · MULTIPLAYER</small><h1>{s.room?'Phòng chờ':'Thương trường'}</h1>
     {s.room?<>
       <p>Mã phòng <strong className="room-code">{s.room.roomCode}</strong> · {s.room.players.length}/4 người</p>
       <ul className="lobby-players">{s.room.players.map(p=><li key={p.id}><i style={{background:COMPANIES[p.companyId].color}}/><span><b>{p.displayName}{p.id===s.playerId?' (bạn)':''}</b><small>{COMPANIES[p.companyId].name}{p.id===s.room!.hostPlayerId?' · Chủ phòng':''}</small></span><em>{s.onlinePlayerIds.includes(p.id)?'Trực tuyến':'Mất kết nối'}</em></li>)}</ul>
-      {host?<><label className="target-field"><span>Mục tiêu lợi nhuận</span><input type="number" min="1" max="1000000" step="1" value={target} onChange={e=>setTarget(e.target.value)}/></label><button className="primary" disabled={!connected||s.busy||s.room.players.length<2||!Number.isInteger(Number(target))||Number(target)<=0||Number(target)>1_000_000} onClick={()=>s.start(Number(target))}>Bắt đầu trận</button></>:<p>Chờ chủ phòng bắt đầu khi có từ 2 đến 4 người.</p>}
+      {host?<><label className="target-field"><span>Mục tiêu lợi nhuận</span><input type="number" min="1" step="1" value={target} onChange={e=>setTarget(e.target.value)}/></label><button className="primary" disabled={!!startReason} aria-describedby="start-reason" onClick={()=>s.start(Number(target))}>Bắt đầu trận</button><p id="start-reason" role="status">{startReason??"Sẵn sàng bắt đầu với "+s.room.players.length+" người."}</p></>:<p>Chờ chủ phòng bắt đầu khi có từ 2 đến 4 người.</p>}
     </>:<>
       <div className="lobby-tabs"><button className={mode==='create'?'active':''} onClick={()=>setMode('create')}>Tạo phòng</button><button className={mode==='join'?'active':''} onClick={()=>setMode('join')}>Tham gia phòng</button></div>
       <label className="target-field"><span>Tên người chơi</span><input autoComplete="nickname" maxLength={60} value={name} onChange={e=>setName(e.target.value)} placeholder="Nhập tên của bạn"/></label>

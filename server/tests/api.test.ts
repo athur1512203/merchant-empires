@@ -26,6 +26,19 @@ async function playing(){
   return f;
 }
 describe('room API',()=>{
+  it.each([1,2,3,4])('starts only with 2–4 members: %i',async(count)=>{
+    const f=await fixture([3,1,0,2].slice(0,count));
+    const result=await f.start().expect(count===1?409:200);
+    if(count===1){expect(result.body.error).toBe('NEED_TWO_TO_FOUR_PLAYERS');return}
+    expect(result.body.state.seats).toEqual([3,1,0,2].slice(0,count));
+    expect(result.body.state.players.map((p:{id:number})=>p.id)).toEqual([3,1,0,2].slice(0,count));
+    await f.start(1,'not-host-start',1).expect(403);
+  });
+  it.each([0,-1,1.5])('rejects invalid target %s on the backend',async(targetProfit)=>{
+    const f=await fixture([3,1]);
+    await request(f.app).post(f.base+'/start').auth(f.players[0].reconnectToken,{type:'bearer'}).set('Idempotency-Key','invalid-target').send({expectedVersion:0,targetProfit}).expect(400);
+  });
+
   it('creates, joins, hashes credentials and omits private fields',async()=>{
     const f=await fixture(),room=f.repo.rooms.get(f.code)!;
     expect(room.players).toHaveLength(4);
