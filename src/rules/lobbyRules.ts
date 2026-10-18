@@ -1,5 +1,5 @@
 import type {RoomInfo} from '../network/protocol';
-export const MULTIPLAYER_RULES_VERSION='human-2-4-setup-v4';
+export const MULTIPLAYER_RULES_VERSION='human-2-4-map-v5';
 export function startBlockReason(s:{room:RoomInfo|null;playerId:string|null;connection:string;busy:boolean;rulesVersion?:string|null},target:number):string|null{
   if(!s.room)return 'Bạn chưa tham gia phòng.';
   if(s.room.hostPlayerId!==s.playerId)return 'Chỉ chủ phòng được bắt đầu trận.';

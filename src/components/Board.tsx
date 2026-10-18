@@ -1,9 +1,12 @@
-import {useId,useMemo,useRef,useState} from 'react';
+import {useEffect,useId,useMemo,useRef,useState} from 'react';
 import {RotateCcw,ZoomIn,ZoomOut} from 'lucide-react';
-import {hexCorners} from '../engine/hexGrid';
+import {HEX_SIZE,hexCorners} from '../engine/hexGrid';
+import {buildingLabelPositions} from '../engine/buildingLabels';
+import {fitBoardView} from '../engine/boardCamera';
 import {useGameStore,canControl} from '../store/gameStore';
 import {canPlaceSettlement} from '../rules';
 import {tileImages} from '../config/gameAssets';
+import {BuildingIcon} from './BuildingIcon';
 import {ConstructionPopover} from './ConstructionUI';
 import {vi} from '../i18n/vi';
 import type {Hex} from '../types';
@@ -12,15 +15,26 @@ const pts=(h:Hex)=>hexCorners(h).map(p=>`${p.x},${p.y}`).join(' ');
 type Drag={x:number;y:number;vx:number;vy:number;moved:boolean};
 export function Board(){
  const s=useGameStore(),[view,setView]=useState({x:470,y:325,z:1}),drag=useRef<Drag|null>(null),[popup,setPopup]=useState<{id:string;anchor:DOMRect}|null>(null);
+ const shell=useRef<HTMLDivElement>(null),[viewport,setViewport]=useState({width:940,height:650});
+ const shapeKey=s.hexes.map(h=>h.id).join(';');
+ const fitted=fitBoardView(s.hexes,viewport.width,viewport.height);
+ useEffect(()=>{
+  const element=shell.current;if(!element)return;
+  const resize=new ResizeObserver(([entry])=>setViewport({width:entry.contentRect.width,height:entry.contentRect.height}));
+  resize.observe(element);return()=>resize.disconnect();
+ },[]);
+ useEffect(()=>{setView(fitBoardView(s.hexes,viewport.width,viewport.height));setPopup(null)},[shapeKey,viewport.width,viewport.height]);
+ const minZoom=Math.min(.3,fitted.z*.6);
  const clipPrefix=useId().replaceAll(':','');
  const hexes=s.hexes,topology={vertices:s.vertices,edges:s.edges};
  const color=(id:number)=>s.players.find(p=>p.id===id)?.color??'#ccc';
  const placing=!!s.setup&&canControl(s);
  const actor=s.players.find(p=>p.id===s.localPlayerId)??s.players[0];
  const validVs=useMemo(()=>new Set(s.vertices.filter(v=>canPlaceSettlement({board:s.board,buildings:s.buildings},v.id,actor.id).ok).map(v=>v.id)),[s.vertices,s.board,s.buildings,actor.id]);
+ const numberPositions=useMemo(()=>buildingLabelPositions(s.hexes,s.vertices,s.buildings,s.factories,view.z,fitted.z),[s.hexes,s.vertices,s.buildings,s.factories,view.z,fitted.z]);
  const hint=s.setup||s.mode==='settlement'?vi.chooseJunction:vi.surveyHint;
  const showVertices=canControl(s)&&(placing||s.mode==='settlement');
- return <><div className="board-shell" onWheel={e=>{e.preventDefault();setPopup(null);setView(v=>({...v,z:Math.max(.55,Math.min(1.8,v.z*(e.deltaY>0?.9:1.1)))}))}} onPointerDown={e=>{
+ return <><div ref={shell} className="board-shell" onWheel={e=>{e.preventDefault();setPopup(null);setView(v=>({...v,z:Math.max(minZoom,Math.min(1.8,v.z*(e.deltaY>0?.9:1.1)))}))}} onPointerDown={e=>{
   const el=e.target as Element;
   if(el.closest?.('.vertex,.map-tools,button'))return;
   setPopup(null);drag.current={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y,moved:false};
@@ -31,11 +45,12 @@ export function Board(){
   drag.current.moved=true;
   setView(v=>({...v,x:drag.current!.vx+dx,y:drag.current!.vy+dy}));
  }} onPointerUp={()=>drag.current=null} onPointerCancel={()=>drag.current=null}>
- <svg className="board" viewBox="0 0 940 650"><defs><filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="5" floodOpacity=".55"/></filter>{hexes.map((h,i)=><clipPath key={h.id} id={`${clipPrefix}-hex-${i}`} clipPathUnits="userSpaceOnUse"><polygon points={pts(h)}/></clipPath>)}</defs><g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
- {hexes.map((h,i)=><g key={h.id} className={`hex ${s.selectedHex===h.id?'selected':''} ${s.activeHexes.includes(h.id)?'active':''}`} style={{pointerEvents:s.setup?'none':'auto'}} onClick={e=>{e.stopPropagation();if(!s.setup)s.selectHex(h.id)}}><polygon points={pts(h)} fill={palette[h.resource][0]} stroke={palette[h.resource][1]} strokeWidth="3" filter="url(#shadow)"/><image className="hex-art" href={tileImages[h.resource]} x={h.x-53} y={h.y-53} width="106" height="106" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipPrefix}-hex-${i})`}/><polygon className="hex-outline" points={pts(h)} fill="none" stroke={palette[h.resource][1]} strokeWidth="3"/><g className="number-token"><circle cx={h.x} cy={h.y+24} r="15"/><text x={h.x} y={h.y+29}>{h.number}</text></g></g>)}
- {topology.vertices.map(v=>{const b=s.buildings.find(b=>b.vertexId===v.id),f=s.factories.find(x=>x.vertexId===v.id),ok=validVs.has(v.id),sel=s.selectedVertex===v.id;return <g key={v.id} className={`vertex ${ok&&showVertices?'valid':''} ${sel?'picked':''}`} onPointerDown={e=>e.stopPropagation()} role={b||ok&&showVertices?'button':undefined} tabIndex={b||ok&&showVertices?0:undefined} aria-label={b?(b.playerId===actor.id?'Công trình của bạn':'Công trình đối thủ')+' · Khu định cư cấp '+b.level+(f?' · Nhà máy cấp '+f.level:''):ok&&showVertices?'Xây tại giao điểm '+v.id:undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.currentTarget.dispatchEvent(new MouseEvent('click',{bubbles:true}))}}} onClick={e=>{e.stopPropagation();if(showVertices&&ok){if(placing)s.buildSettlement(v.id);else setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}else if(b&&!s.setup){s.selectVertex(v.id);setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}}}>
+ <svg className="board" viewBox={`0 0 ${viewport.width} ${viewport.height}`}><defs><filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="5" floodOpacity=".55"/></filter>{hexes.map((h,i)=><clipPath key={h.id} id={`${clipPrefix}-hex-${i}`} clipPathUnits="userSpaceOnUse"><polygon points={pts(h)}/></clipPath>)}</defs><g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
+ {hexes.map((h,i)=><g key={h.id} className={`hex ${s.selectedHex===h.id?'selected':''} ${s.activeHexes.includes(h.id)?'active':''}`} style={{pointerEvents:s.setup?'none':'auto'}} onClick={e=>{e.stopPropagation();if(!s.setup)s.selectHex(h.id)}}><polygon points={pts(h)} fill={palette[h.resource][0]} stroke={palette[h.resource][1]} strokeWidth="3" filter="url(#shadow)"/><image className="hex-art" href={tileImages[h.resource]} x={h.x-HEX_SIZE} y={h.y-HEX_SIZE} width={HEX_SIZE*2} height={HEX_SIZE*2} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipPrefix}-hex-${i})`}/><polygon className="hex-outline" points={pts(h)} fill="none" stroke={palette[h.resource][1]} strokeWidth="3"/></g>)}
+ {[...topology.vertices].sort((a,b)=>Number(s.buildings.some(x=>x.vertexId===b.id))-Number(s.buildings.some(x=>x.vertexId===a.id))).map(v=>{const b=s.buildings.find(b=>b.vertexId===v.id),f=s.factories.find(x=>x.vertexId===v.id),ok=validVs.has(v.id),sel=s.selectedVertex===v.id;return <g key={v.id} className={`vertex ${ok&&showVertices?'valid':''} ${sel?'picked':''}`} onPointerDown={e=>e.stopPropagation()} role={b||ok&&showVertices?'button':undefined} tabIndex={b||ok&&showVertices?0:undefined} aria-label={b?(b.playerId===actor.id?'Công trình của bạn':'Công trình đối thủ')+' · Khu định cư cấp '+b.level+(f?' · Nhà máy cấp '+f.level:''):ok&&showVertices?'Xây tại giao điểm '+v.id:undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.currentTarget.dispatchEvent(new MouseEvent('click',{bubbles:true}))}}} onClick={e=>{e.stopPropagation();if(showVertices&&ok){if(placing)s.buildSettlement(v.id);else setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}else if(b&&!s.setup){s.selectVertex(v.id);setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}}}>
   {showVertices&&<circle cx={v.x} cy={v.y} r="18" fill={ok?'#f1cc75':'transparent'} fillOpacity={ok?0.45:0} stroke={ok?'#fff2be':'transparent'} strokeWidth="2" pointerEvents="all"/>}
   {ok&&showVertices&&<circle cx={v.x} cy={v.y} r="7" fill="#f8e6a8" pointerEvents="none"/>}
-  {b&&<g transform={`translate(${v.x-12} ${v.y-17})`} pointerEvents="all"><path d="M2 12 12 3l10 9v13H2Z" fill={color(b.playerId)} stroke={sel?'#fff':'#f8e3ac'} strokeWidth={sel?3:2}/><rect x="9" y="16" width="6" height="9" fill="#15262d"/><text x="12" y="11" textAnchor="middle" fill="#15262d" fontSize="8">{b.level}</text>{f&&<rect x="-4" y="14" width="8" height="8" fill="#c9a45a" stroke="#15262d"/>}</g>}
+  {b&&<g transform={`translate(${v.x} ${v.y})`}><BuildingIcon settlementLevel={b.level} factoryLevel={f?.level} color={color(b.playerId)} selected={sel} scale={Math.min(1,view.z/fitted.z)/view.z}/></g>}
  </g>})}
- </g></svg><div className="map-label"><small>{vi.industrialFrontier}</small><strong>{vi.ironhavenBasin}</strong></div><div className="map-tools"><button title={vi.zoomIn} aria-label={vi.zoomIn} onClick={()=>{setPopup(null);setView(v=>({...v,z:Math.min(1.8,v.z+.15)}))}}><ZoomIn/></button><button title={vi.zoomOut} aria-label={vi.zoomOut} onClick={()=>{setPopup(null);setView(v=>({...v,z:Math.max(.55,v.z-.15)}))}}><ZoomOut/></button><button title={vi.resetCamera} aria-label={vi.resetCamera} onClick={()=>{setPopup(null);setView({x:470,y:325,z:1})}}><RotateCcw/></button></div><div className="mode-pill">{hint}</div></div>{popup&&!s.setup&&<ConstructionPopover key={popup.id} vertexId={popup.id} anchor={popup.anchor} onClose={()=>setPopup(null)}/>}</>}
+ {hexes.map(h=><g key={`number-${h.id}`} className="number-token" pointerEvents="none" transform={`translate(${numberPositions.get(h.id)!.x} ${numberPositions.get(h.id)!.y}) scale(${Math.max(1,.7/view.z)})`}><circle r="15"/><text y="5">{h.number}</text></g>)}
+ </g></svg><div className="map-label"><small>{vi.industrialFrontier}</small><strong>{vi.ironhavenBasin}</strong>{s.board.mapSeed!==undefined&&<small>Seed {s.board.mapSeed} · {s.hexes.length} ô</small>}</div><div className="map-tools"><button title={vi.zoomIn} aria-label={vi.zoomIn} onClick={()=>{setPopup(null);setView(v=>({...v,z:Math.min(1.8,v.z+.15)}))}}><ZoomIn/></button><button title={vi.zoomOut} aria-label={vi.zoomOut} onClick={()=>{setPopup(null);setView(v=>({...v,z:Math.max(.55,v.z-.15)}))}}><ZoomOut/></button><button title={vi.resetCamera} aria-label={vi.resetCamera} onClick={()=>{setPopup(null);setView(fitted)}}><RotateCcw/></button></div><div className="mode-pill">{hint}</div></div>{popup&&!s.setup&&<ConstructionPopover key={popup.id} vertexId={popup.id} anchor={popup.anchor} onClose={()=>setPopup(null)}/>}</>}

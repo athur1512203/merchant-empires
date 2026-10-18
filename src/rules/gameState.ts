@@ -23,7 +23,7 @@ export function createWaitingState(roomId='local'):GameState{
   return{constructionRulesVersion:2,roomId,seed:0,phase:'waiting',targetProfit:0,round:1,turnIndex:0,seats:[0,1,2,3],players:COMPANIES.map(c=>createCompany(c.id)),board:generateBoard(1),buildings:[],factories:[],winnerId:null,resourcePrices:{...REFERENCE_RAW_PRICES},marketPressure:emptyResources(),auction:idleAuction(),contracts:[],dice:null,rolled:false};
 }
 
-export function startMatch(state:GameState,targetProfit:number,seed:number,roomId=state.roomId,companyIds:number[]=state.seats):ActionResult{
+export function startMatch(state:GameState,targetProfit:number,seed:number,roomId=state.roomId,companyIds:number[]=state.seats,mapSeed=seed):ActionResult{
   if(state.phase!=='waiting')return{ok:false,error:'Trận đấu đã bắt đầu.'};
   if(!Number.isSafeInteger(targetProfit)||targetProfit<=0)return{ok:false,error:'Mục tiêu lợi nhuận phải là số nguyên dương.'};
   const seats=[...companyIds];
@@ -31,7 +31,7 @@ export function startMatch(state:GameState,targetProfit:number,seed:number,roomI
   return{ok:true,message:'Giai đoạn đặt khu định cư ban đầu.',state:{
     ...state,roomId,seed,phase:'setup',targetProfit,round:1,turnIndex:0,seats,
     players:seats.map(createCompany),
-    board:generateBoard(seed),buildings:[],factories:[],winnerId:null,
+    board:generateBoard(mapSeed),buildings:[],factories:[],winnerId:null,
     resourcePrices:{...REFERENCE_RAW_PRICES},marketPressure:emptyResources(),auction:idleAuction(),contracts:[],dice:null,rolled:false
   }};
 }
@@ -53,7 +53,7 @@ export function placeSetupSettlement(state:GameState,playerId:number,vertexId:st
 }
 
 export function applyAction(state:GameState,action:GameAction):ActionResult{
-  if(action.type==='startMatch')return startMatch(state,action.targetProfit,action.seed,action.roomId??state.roomId,action.companyIds);
+  if(action.type==='startMatch')return startMatch(state,action.targetProfit,action.seed,action.roomId??state.roomId,action.companyIds,action.mapSeed);
   if(action.type==='placeSetupSettlement')return placeSetupSettlement(state,action.playerId,action.vertexId);
   if(action.type==='ROLL_DICE')return rollDice(state,action.playerId,mulberry32((state.seed+state.round*101+state.turnIndex*17)>>>0));
   if(action.type==='END_TURN')return endTurn(state,action.playerId);

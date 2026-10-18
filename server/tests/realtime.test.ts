@@ -17,7 +17,7 @@ const disposers:(()=>Promise<void>)[]=[];
 const socketOnce=(socket:Socket,event:string)=>new Promise<void>(resolve=>socket.once(event,()=>resolve()));
 afterEach(async()=>{for(const dispose of disposers.splice(0).reverse())await dispose()});
 async function fixture(companies=[0,1,2,3]){
-  const repo=new MemoryRepository(),service=new RoomService(repo,()=>.25),app=createApp(service),server=createServer(app),realtime=attachRealtime(server,service);
+  const repo=new MemoryRepository(),service=new RoomService(repo,()=>.25,()=>42),app=createApp(service),server=createServer(app),realtime=attachRealtime(server,service);
   server.listen(0,'127.0.0.1');await once(server,'listening');
   const address=server.address();if(!address||typeof address==='string')throw new Error('No port');
   const url=`http://127.0.0.1:${address.port}`;
@@ -64,11 +64,19 @@ describe('Socket.IO multiplayer',()=>{
       expect((await f.act((who+1)%count,{type:'placeSetupSettlement',vertexId})).ok).toBe(false);
       expect((await f.act(who,{type:'placeSetupSettlement',vertexId})).ok).toBe(true);
       await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===room().version)).toBe(true);
-      for(const socket of f.clients)expect(f.updates.get(socket)!.state.buildings).toEqual(room().state.buildings);
+      for(const socket of f.clients){
+        expect(f.updates.get(socket)!.state.buildings).toEqual(room().state.buildings);
+        const {seed:_seed,...publicBoard}=room().state.board;
+        expect(f.updates.get(socket)!.state.board).toEqual(publicBoard);
+        expect(f.updates.get(socket)!.state.board.hexes).toHaveLength(61);
+        expect(f.updates.get(socket)!.state.board.mapSeed).toBe(room().state.board.seed);
+      }
       if(i===count-1){
         const before=structuredClone(room().state);
         f.clients[0].disconnect();f.clients[0]=await f.connect(f.players[0].reconnectToken);
         expect(f.updates.get(f.clients[0])!.state.buildings).toEqual(before.buildings);
+        expect(f.updates.get(f.clients[0])!.state.board.hexes).toEqual(before.board.hexes);
+        expect(f.updates.get(f.clients[0])!.state.board.vertices).toEqual(before.board.vertices);
         expect(f.updates.get(f.clients[0])!.state.turnIndex).toBe(0);
         expect(room().state).toEqual(before);
       }

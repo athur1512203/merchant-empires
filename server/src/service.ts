@@ -22,7 +22,7 @@ export class RoomService {
   async availability(code:string){
     return this.repository.transact(code,room=>({roomCode:room.roomCode,status:room.status,takenCompanyIds:room.players.map(p=>p.companyId),playerCount:room.players.length}));
   }
-  constructor(private repository:RoomRepository,private rng:()=>number=()=>randomInt(0,0x100000000)/0x100000000){}
+  constructor(private repository:RoomRepository,private rng:()=>number=()=>randomInt(0,0x100000000)/0x100000000,private mapSeed:()=>number=()=>randomInt(0,0x100000000)){}
   private member(room:Room,token:string|undefined):Member {
     if(!token||!/^[-\w]{43}$/.test(token))throw new ApiError(401,'INVALID_TOKEN');
     const digest=Buffer.from(hash(token),'hex');
@@ -73,7 +73,7 @@ export class RoomService {
       if('targetProfit' in parsed){
         if(room.status!=='WAITING')throw new ApiError(409,'ROOM_ALREADY_STARTED');
         if(room.players.length<2||room.players.length>4)throw new ApiError(409,'NEED_TWO_TO_FOUR_PLAYERS');
-        action={type:'startMatch',targetProfit:parsed.targetProfit,seed:Math.floor(this.rng()*0x100000000),roomId:room.id,companyIds:[...room.players].sort((a,b)=>a.seatIndex-b.seatIndex).map(p=>p.companyId)};
+        action={type:'startMatch',targetProfit:parsed.targetProfit,seed:Math.floor(this.rng()*0x100000000),mapSeed:this.mapSeed(),roomId:room.id,companyIds:[...room.players].sort((a,b)=>a.seatIndex-b.seatIndex).map(p=>p.companyId)};
       }else{
         if(room.status!=='PLAYING')throw new ApiError(409,'ROOM_NOT_PLAYING');
         action={...parsed.action,playerId:player.companyId} as GameAction;

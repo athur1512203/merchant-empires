@@ -1,13 +1,13 @@
 import {describe,expect,it} from 'vitest';
-import {areVerticesAdjacent,generateBoard,rowLengths,ROW_COUNTS} from './boardRules';
+import {areVerticesAdjacent,generateBoard,rowLengths,inspectShape,buildLogicTopology} from './boardRules';
 import {canPlaceSettlement,canPlaceSetupSettlement} from './settlementRules';
 import {applyAction,createCompany,createWaitingState,placeSetupSettlement,startMatch} from './gameState';
 
 describe('BoardRules',()=>{
-  it('builds 37 hexes in rows 4-5-6-7-6-5-4',()=>{
+  it('builds an irregular 61-cell region by default',()=>{
     const b=generateBoard(7);
-    expect(b.hexes).toHaveLength(37);
-    expect(rowLengths(b.hexes)).toEqual([...ROW_COUNTS]);
+    expect(b.hexes).toHaveLength(61);
+    expect(rowLengths(b.hexes)).not.toEqual([4,5,6,7,6,5,4]);
   });
   it('reproduces the same map for the same seed',()=>{
     const a=generateBoard(42),c=generateBoard(42),d=generateBoard(43);
@@ -29,7 +29,7 @@ describe('BoardRules',()=>{
   it('spreads four resources across the board',()=>{
     const counts={metal:0,wood:0,wheat:0,cotton:0};
     for(const h of generateBoard(11).hexes)counts[h.resource]++;
-    expect(Object.values(counts).every(n=>n>=8&&n<=11)).toBe(true);
+    expect(Object.values(counts).every(n=>n>=15&&n<=16)).toBe(true);
   });
 });
 

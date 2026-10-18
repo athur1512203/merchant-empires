@@ -23,8 +23,8 @@
 
 ## 3. Bản đồ — ĐÃ CHỐT
 
-- **37 ô lục giác** liền nhau, bố cục hàng **4–5–6–7–6–5–4**.
-- Mỗi trận ngẫu nhiên hóa phân bố tài nguyên và số xúc xắc; hình học bản đồ giữ nguyên.
+- **60–80 ô lục giác** liền nhau, mặc định **61 ô**. Hình dạng axial phát triển vùng có kiểm soát, bất đối xứng, không có ô rời hoặc lỗ trống; hạn chế nhánh hẹp và tỉ lệ dài/rộng quá lớn.
+- Server tạo hình học, tài nguyên và số xúc xắc một lần khi bắt đầu. Seed bản đồ độc lập với seed kinh tế, dữ liệu ô và đỉnh được đồng bộ và lưu snapshot; reconnect/khôi phục không sinh lại bản đồ. Trận cũ giữ nguyên bản đồ đã lưu.
 - Bốn tài nguyên thô: **Kim loại (metal)**, **Gỗ (wood)**, **Lúa mì (wheat)**, **Bông (cotton)**; phân bố tương đối cân bằng.
 - Các ô mang số xúc xắc từ 2 đến 12, **không có số 7**.
 - Tránh cụm tài nguyên giống nhau và tránh ô số 6/8 nằm cạnh nhau trong quá trình sinh bản đồ.

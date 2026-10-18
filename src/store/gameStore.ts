@@ -27,7 +27,7 @@ export function canControl(s:Pick<State,'connection'|'busy'|'seats'|'turn'|'loca
 function receive(update:RoomUpdate){
   const previous=useGameStore.getState();
   if(previous.room?.id===update.room.id&&update.version<previous.version)return;
-  const next=update.state,board={...next.board,seed:0},vis=visualFromBoard(board),newVersion=update.version>previous.version;
+  const next=update.state,board={...next.board,seed:next.board.mapSeed??0},vis=visualFromBoard(board),newVersion=update.version>previous.version;
   const prices=newVersion?Object.entries(next.resourcePrices).filter(([r,p])=>previous.resourcePrices[r as Resource]!==p).map(([resource,to])=>({resource:resource as Resource,from:previous.resourcePrices[resource as Resource],to,round:next.round,percent:(to/previous.resourcePrices[resource as Resource]-1)*100})):[];
   useGameStore.setState({room:update.room,rulesVersion:update.rulesVersion??null,playerId:update.self.playerId,localPlayerId:update.self.companyId,version:update.version,connection:'connected',onlinePlayerIds:update.onlinePlayerIds??[],
     phase:next.phase,seats:next.seats,board,...vis,started:next.phase!=='waiting',setup:next.phase==='setup',ended:next.phase==='finished',targetProfit:next.targetProfit||null,winnerId:next.winnerId,

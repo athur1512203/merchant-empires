@@ -6,3 +6,10 @@
 .hex:hover .hex-art{filter:brightness(1.12)}
 .hex.selected .hex-outline,.hex.active .hex-outline{stroke:#f7dc7e;stroke-width:5}
 .hex.active .hex-outline{animation:pulse 1s ease 3}
+.workspace{grid-template-columns:220px minmax(0,1fr) 260px}
+.board-shell{min-height:0}
+.map-label,.mode-pill{pointer-events:none}
+.number-token text{font-size:15px}
+.vertex .building-icon .company-badge{animation:none;opacity:1}
+.vertex:focus-visible .building-hit-area{stroke:#fff2be;stroke-width:1.5}
+@media(min-width:1600px){.workspace{grid-template-columns:240px minmax(0,1fr) 280px}}

@@ -1,5 +1,5 @@
 import type {Edge,Hex,Vertex} from '../types';
-import {generateBoard} from '../rules/boardRules';
+import {buildLogicTopology,generateBoard} from '../rules/boardRules';
 import type {BoardLogic,HexCell} from '../rules/types';
 export const HEX_SIZE=53;
 export const axialToPixel=(q:number,r:number,size=HEX_SIZE)=>({x:size*Math.sqrt(3)*(q+r/2),y:size*1.5*r});
@@ -39,8 +39,7 @@ export function visualFromBoard(board:BoardLogic){
 }
 export function createBoard(seed=1):Hex[]{return visualFromBoard(generateBoard(seed)).hexes}
 export function buildTopology(hexes:Hex[],seed=1){
-  const vis=visualFromBoard(generateBoard(seed));
-  if(hexes.length===vis.hexes.length)return{vertices:vis.vertices,edges:vis.edges};
+  const vis=visualFromBoard({seed,hexes,...buildLogicTopology(hexes)});
   return{vertices:vis.vertices,edges:vis.edges};
 }
 export const adjacentVertexIds=(vertexId:string,edges:Edge[])=>edges.filter(e=>e.a===vertexId||e.b===vertexId).map(e=>e.a===vertexId?e.b:e.a);

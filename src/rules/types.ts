@@ -11,10 +11,12 @@ export const HEX_NEIGHBORS:[number,number][]=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],
 
 export type HexCell={id:string;q:number;r:number;resource:Resource;number:number};
 export type LogicVertex={id:string;hexIds:string[];neighborIds:string[];corners:{q:number;r:number;i:number}[]};
-export type BoardLogic={seed:number;hexes:HexCell[];vertices:LogicVertex[];adjacency:Record<string,string[]>};
+// mapSeed is public and independent from the private economic RNG seed.
+// Optional for existing snapshots: missing metadata never triggers regeneration.
+export type BoardLogic={seed:number;mapSeed?:number;hexes:HexCell[];vertices:LogicVertex[];adjacency:Record<string,string[]>};
 
 export type GameAction=
-  |{type:'startMatch';targetProfit:number;seed:number;roomId?:string;companyIds?:number[]}
+  |{type:'startMatch';targetProfit:number;seed:number;mapSeed?:number;roomId?:string;companyIds?:number[]}
   |{type:'placeSetupSettlement';playerId:number;vertexId:string}
   |{type:'ROLL_DICE';playerId:number}
   |{type:'END_TURN';playerId:number}
