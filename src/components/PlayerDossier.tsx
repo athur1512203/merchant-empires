@@ -15,8 +15,8 @@ export function PlayerDossier(){
     </div>
     <div className="section-title"><span>{vi.holdings}</span></div>
     <div className="stock-grid">
-      {RESOURCES.map(r=><div className="stock" key={r}><span className={r}><ResourceIcon type={r} size={16}/></span><div><small>{vi.resources[r]}</small><b>{self.resources[r]}</b></div></div>)}
-      {PRODUCTS.map(p=><div className="stock goods" key={p}><div><small>{vi.products[p]}</small><b>{self.products[p]}</b></div></div>)}
+      {RESOURCES.map(r=><div className="stock" key={r}><span className={r}><ResourceIcon type={r} size={28}/></span><div><small>{vi.resources[r]}</small><b>{self.resources[r]}</b></div></div>)}
+      {PRODUCTS.map(p=><div className="stock goods" key={p}><span><ResourceIcon type={p} size={28}/></span><div><small>{vi.products[p]}</small><b>{self.products[p]}</b></div></div>)}
     </div>
     <div className="section-title"><span>{vi.cash}</span></div>
     <div className="cash-block"><Banknote/><b>{formatGold(self.cash)}</b></div>

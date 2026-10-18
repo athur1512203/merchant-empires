@@ -1,0 +1,8 @@
+.commodity-icon{display:inline-block;object-fit:contain;flex-shrink:0;vertical-align:middle;pointer-events:none;border-radius:3px}
+.stock .commodity-icon{display:block}
+.stock>span{flex-shrink:0}
+.stock>div{min-width:0}
+.hex .hex-art,.hex .hex-outline{pointer-events:none}
+.hex:hover .hex-art{filter:brightness(1.12)}
+.hex.selected .hex-outline,.hex.active .hex-outline{stroke:#f7dc7e;stroke-width:5}
+.hex.active .hex-outline{animation:pulse 1s ease 3}

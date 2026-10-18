@@ -1,9 +1,9 @@
-import {useMemo,useRef,useState} from 'react';
+import {useId,useMemo,useRef,useState} from 'react';
 import {RotateCcw,ZoomIn,ZoomOut} from 'lucide-react';
 import {hexCorners} from '../engine/hexGrid';
 import {useGameStore,canControl} from '../store/gameStore';
 import {canPlaceSettlement} from '../rules';
-import {ResourceIcon} from './ResourceIcon';
+import {tileImages} from '../config/gameAssets';
 import {ConstructionPopover} from './ConstructionUI';
 import {vi} from '../i18n/vi';
 import type {Hex} from '../types';
@@ -12,6 +12,7 @@ const pts=(h:Hex)=>hexCorners(h).map(p=>`${p.x},${p.y}`).join(' ');
 type Drag={x:number;y:number;vx:number;vy:number;moved:boolean};
 export function Board(){
  const s=useGameStore(),[view,setView]=useState({x:470,y:325,z:1}),drag=useRef<Drag|null>(null),[popup,setPopup]=useState<{id:string;anchor:DOMRect}|null>(null);
+ const clipPrefix=useId().replaceAll(':','');
  const hexes=s.hexes,topology={vertices:s.vertices,edges:s.edges};
  const color=(id:number)=>s.players.find(p=>p.id===id)?.color??'#ccc';
  const placing=!!s.setup&&canControl(s);
@@ -30,8 +31,8 @@ export function Board(){
   drag.current.moved=true;
   setView(v=>({...v,x:drag.current!.vx+dx,y:drag.current!.vy+dy}));
  }} onPointerUp={()=>drag.current=null} onPointerCancel={()=>drag.current=null}>
- <svg className="board" viewBox="0 0 940 650"><defs><filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="5" floodOpacity=".55"/></filter><pattern id="grain" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="4" cy="7" r=".7" fill="#fff" opacity=".12"/><path d="M0 18 24 8" stroke="#fff" opacity=".04"/></pattern></defs><g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
- {hexes.map((h,i)=><g key={h.id} className={`hex ${s.selectedHex===h.id?'selected':''} ${s.activeHexes.includes(h.id)?'active':''}`} style={{pointerEvents:s.setup?'none':'auto'}} onClick={e=>{e.stopPropagation();if(!s.setup)s.selectHex(h.id)}}><polygon points={pts(h)} fill={palette[h.resource][0]} stroke={palette[h.resource][1]} strokeWidth="3" filter="url(#shadow)"/><polygon points={pts(h)} fill="url(#grain)"/><foreignObject x={h.x-20} y={h.y-27} width="40" height="40" className="terrain-icon" style={{pointerEvents:'none'}}><div className={`res-icon ${h.resource}`}><ResourceIcon type={h.resource} size={29}/></div></foreignObject><g className="number-token"><circle cx={h.x} cy={h.y+24} r="15"/><text x={h.x} y={h.y+29}>{h.number}</text></g>{i%3===0&&<path d={`M${h.x-32} ${h.y+31} q18 -10 34 0 t34 0`} className="trail"/>}</g>)}
+ <svg className="board" viewBox="0 0 940 650"><defs><filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="5" floodOpacity=".55"/></filter>{hexes.map((h,i)=><clipPath key={h.id} id={`${clipPrefix}-hex-${i}`} clipPathUnits="userSpaceOnUse"><polygon points={pts(h)}/></clipPath>)}</defs><g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
+ {hexes.map((h,i)=><g key={h.id} className={`hex ${s.selectedHex===h.id?'selected':''} ${s.activeHexes.includes(h.id)?'active':''}`} style={{pointerEvents:s.setup?'none':'auto'}} onClick={e=>{e.stopPropagation();if(!s.setup)s.selectHex(h.id)}}><polygon points={pts(h)} fill={palette[h.resource][0]} stroke={palette[h.resource][1]} strokeWidth="3" filter="url(#shadow)"/><image className="hex-art" href={tileImages[h.resource]} x={h.x-53} y={h.y-53} width="106" height="106" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipPrefix}-hex-${i})`}/><polygon className="hex-outline" points={pts(h)} fill="none" stroke={palette[h.resource][1]} strokeWidth="3"/><g className="number-token"><circle cx={h.x} cy={h.y+24} r="15"/><text x={h.x} y={h.y+29}>{h.number}</text></g></g>)}
  {topology.vertices.map(v=>{const b=s.buildings.find(b=>b.vertexId===v.id),f=s.factories.find(x=>x.vertexId===v.id),ok=validVs.has(v.id),sel=s.selectedVertex===v.id;return <g key={v.id} className={`vertex ${ok&&showVertices?'valid':''} ${sel?'picked':''}`} onPointerDown={e=>e.stopPropagation()} role={b||ok&&showVertices?'button':undefined} tabIndex={b||ok&&showVertices?0:undefined} aria-label={b?(b.playerId===actor.id?'Công trình của bạn':'Công trình đối thủ')+' · Khu định cư cấp '+b.level+(f?' · Nhà máy cấp '+f.level:''):ok&&showVertices?'Xây tại giao điểm '+v.id:undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.currentTarget.dispatchEvent(new MouseEvent('click',{bubbles:true}))}}} onClick={e=>{e.stopPropagation();if(showVertices&&ok){if(placing)s.buildSettlement(v.id);else setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}else if(b&&!s.setup){s.selectVertex(v.id);setPopup({id:v.id,anchor:e.currentTarget.getBoundingClientRect()})}}}>
   {showVertices&&<circle cx={v.x} cy={v.y} r="18" fill={ok?'#f1cc75':'transparent'} fillOpacity={ok?0.45:0} stroke={ok?'#fff2be':'transparent'} strokeWidth="2" pointerEvents="all"/>}
   {ok&&showVertices&&<circle cx={v.x} cy={v.y} r="7" fill="#f8e6a8" pointerEvents="none"/>}
