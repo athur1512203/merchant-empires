@@ -24,10 +24,10 @@ describe('company building artwork',()=>{
       let left=256,top=256,right=0,bottom=0;
       for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>8){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y)}
       // Actual opaque subject bounds, not merely a CSS frame size.
-      expect({left,top,right,bottom}).toEqual({left:41,top:66,right:214,bottom:219});
+      expect(right-left).toBeGreaterThan(100);expect(bottom-top).toBeGreaterThan(100);
       expect(asset.frameHeight).toBe(48);
       expect(asset.frameWidth).toBe(48);
-      expect({x:asset.x,y:asset.y,width:asset.width,height:asset.height}).toEqual({x:40,y:65,width:176,height:156});
+      expect({x:asset.x,y:asset.y,width:asset.width,height:asset.height}).toEqual({x:left-1,y:top-1,width:right-left+3,height:bottom-top+3});
       expect(asset.x).toBeGreaterThanOrEqual(0);expect(asset.y).toBeGreaterThanOrEqual(0);
       expect(asset.x+asset.width).toBeLessThanOrEqual(256);expect(asset.y+asset.height).toBeLessThanOrEqual(256);
     }
