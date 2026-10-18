@@ -15,15 +15,13 @@ export const commodityImages:Record<Commodity,string>={
   fabric:asset('goods_fabric'),clothing:asset('goods_clothing'),
 };
 
-// Preserve the previous per-stage frame proportions and double both dimensions.
-export const BUILDING_ICON_SIZE_MULTIPLIER=2;
-const legacyFrames={settlement_level_1:[155,163],settlement_level_2:[169,168],factory_level_1:[140,185],factory_level_2:[163,185],factory_level_3:[167,185]} as const;
-export type BuildingStage=keyof typeof legacyFrames;
+// Every stage shares one frame; alpha-content bounds normalize source padding.
+export const BUILDING_ICON_SIZE=48;
+export type BuildingStage='settlement_level_1'|'settlement_level_2'|'factory_level_1'|'factory_level_2'|'factory_level_3';
 export const BUILDING_COMPANIES=['iron_works','timber_guild','golden_trade','ocean_empire'] as const;
 export function buildingArtwork(settlementLevel:1|2,factoryLevel?:1|2|3,companyId=0){
   const stage:BuildingStage=factoryLevel?`factory_level_${factoryLevel}`:`settlement_level_${settlementLevel}`;
   const company=BUILDING_COMPANIES[companyId]??BUILDING_COMPANIES[0];
   const name=`${company}_${stage}` as keyof typeof buildingBounds;
-  const [width,height]=legacyFrames[stage],frameHeight=28*BUILDING_ICON_SIZE_MULTIPLIER;
-  return{...buildingBounds[name],src:`${import.meta.env.BASE_URL}assets/game/buildings/${name}.png`,frameWidth:frameHeight*width/height,frameHeight};
+  return{...buildingBounds[name],src:`${import.meta.env.BASE_URL}assets/game/buildings/${name}.png`,frameWidth:BUILDING_ICON_SIZE,frameHeight:BUILDING_ICON_SIZE};
 }
