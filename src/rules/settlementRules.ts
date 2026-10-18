@@ -1,4 +1,4 @@
-import {MAX_SETTLEMENTS_PER_PLAYER,type GameState} from './types';
+import {MAX_SETTLEMENTS_PER_PLAYER,SETUP_SETTLEMENTS_PER_PLAYER,type GameState} from './types';
 import {vertexById} from './boardRules';
 import type {Building,Factory} from '../types';
 
@@ -9,9 +9,7 @@ export function factoryOn(vertexId:string,factories:Factory[]){return factories.
 export function canPlaceSettlement(state:Pick<GameState,'board'|'buildings'>,vertexId:string,playerId:number){
   if(!vertexById(state.board,vertexId))return{ok:false as const,error:'Đỉnh không tồn tại trên bản đồ.'};
   if(occupying(vertexId,state.buildings))return{ok:false as const,error:'Đỉnh này đã có khu định cư.'};
-  const neighbors=state.board.adjacency[vertexId]??[];
-  if(state.buildings.some(b=>neighbors.includes(b.vertexId)))return{ok:false as const,error:'Hai khu định cư không được nằm ở hai đỉnh liền kề.'};
-  if(ownedSettlements(playerId,state.buildings)>=MAX_SETTLEMENTS_PER_PLAYER)return{ok:false as const,error:'Bạn đã đạt giới hạn 3 khu định cư.'};
+  if(ownedSettlements(playerId,state.buildings)>=MAX_SETTLEMENTS_PER_PLAYER)return{ok:false as const,error:'Bạn đã đạt giới hạn 4 khu định cư.'};
   return{ok:true as const};
 }
 
@@ -28,6 +26,6 @@ export function canPlaceSetupSettlement(state:GameState,playerId:number,vertexId
   if(state.phase!=='setup')return{ok:false as const,error:'Không ở giai đoạn đặt khu định cư ban đầu.'};
   const current=state.seats[state.turnIndex];
   if(current!==playerId)return{ok:false as const,error:'Chưa đến lượt đặt khu định cư của bạn.'};
-  if(ownedSettlements(playerId,state.buildings)>0)return{ok:false as const,error:'Mỗi công ty chỉ được đặt 1 khu định cư miễn phí.'};
+  if(ownedSettlements(playerId,state.buildings)>=SETUP_SETTLEMENTS_PER_PLAYER)return{ok:false as const,error:'Mỗi công ty chỉ được đặt 2 khu định cư miễn phí.'};
   return canPlaceSettlement(state,vertexId,playerId);
 }

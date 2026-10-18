@@ -17,9 +17,9 @@
 ## 2. Trạng thái khởi đầu — ĐÃ CHỐT
 
 - Mỗi công ty bắt đầu với **0 vàng**, **0 nguyên liệu**, **0 thành phẩm**, **0 lợi nhuận tích lũy**.
-- Khi bắt đầu, những người tham gia lần lượt đặt **1 khu định cư cấp 1 miễn phí** theo thứ tự tham gia phòng, chỉ gồm các công ty đã được chọn khi bắt đầu.
+- Khi bắt đầu, những người tham gia lần lượt đặt **2 khu định cư cấp 1 miễn phí** theo thứ tự tham gia phòng lặp lại hai lượt, chỉ gồm các công ty đã được chọn khi bắt đầu.
 - Không có đường miễn phí hay đường xây dựng.
-- Sau khi cả 4 khu định cư đầu tiên được đặt hợp lệ, trận đấu bước vào vòng 1.
+- Sau khi tất cả công ty đã đặt đủ 2 khu định cư miễn phí (tổng 4–8 công trình), trận đấu bước vào vòng 1.
 
 ## 3. Bản đồ — ĐÃ CHỐT
 
@@ -32,9 +32,9 @@
 
 ## 4. Khu định cư — ĐÃ CHỐT
 
-- Mỗi công ty sở hữu tối đa **3 khu định cư**.
+- Mỗi công ty sở hữu tối đa **4 khu định cư**, gồm cả 2 công trình miễn phí.
 - Có thể xây ở **bất kỳ đỉnh hợp lệ nào trên toàn bản đồ**, không yêu cầu kết nối với công trình hiện có.
-- Không được xây trùng đỉnh hoặc trên đỉnh liền kề bất kỳ khu định cư nào (kể cả của chính mình).
+- Chỉ cấm xây trùng một đỉnh đã bị chiếm. Khu định cư cùng hoặc khác công ty được phép liền kề, sát nhau hoặc đan xen.
 - Khu định cư chỉ có cấp **1, 2**; không có cấp 3.
 - Khi ô lục giác kề khu định cư được kích hoạt, khu định cư nhận lần lượt **1 / 2 đơn vị** tài nguyên của ô đó tùy cấp.
 - Xây khu định cư mới sau giai đoạn khởi đầu và nâng cấp khu định cư phải trả **cả nguyên liệu và vàng**.
@@ -57,7 +57,7 @@
 ## 6. Nhà máy và sản xuất — ĐÃ CHỐT PHẦN NGUYÊN TẮC
 
 - Nhà máy **đa năng**: mỗi nhà máy có thể sản xuất cả 6 loại thành phẩm.
-- Tối đa 1 nhà máy trên mỗi khu định cư, tức tối đa 3 nhà máy/công ty.
+- Tối đa 1 nhà máy trên mỗi khu định cư, tức tối đa 4 nhà máy/công ty.
 - Sản xuất tiêu hao nguyên liệu, công suất và **phí gia công cho từng mẻ**.
 - Nhà máy không sản xuất thì **không mất phí duy trì theo vòng**.
 - Sáu thành phẩm: **Máy móc (machinery), Đường ray (rail), Nội thất (furniture), Bột mì (flour), Vải dệt (fabric), Quần áo (clothing)**.
@@ -112,7 +112,7 @@
 - Kiểu dữ liệu game, người chơi, bản đồ, đỉnh và công trình.
 - Sinh bản đồ 37 hex có seed và ánh xạ đỉnh chính xác.
 - Kiểm tra vị trí đặt khu định cư.
-- Đặt lần lượt 4 khu định cư ban đầu miễn phí.
+- Đặt 2 khu định cư cấp 1 miễn phí/công ty, hai lượt theo thứ tự tham gia phòng.
 - Chuyển từ `setup` sang `playing`.
 - Viết kiểm thử tự động. **Không triển khai gieo xúc xắc, kinh tế, sản xuất, đấu thầu trong Task 01.**
 

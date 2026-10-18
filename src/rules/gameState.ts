@@ -1,5 +1,6 @@
 import type {Player} from '../types';
 import {generateBoard} from './boardRules';
+import {SETUP_SETTLEMENTS_PER_PLAYER} from './types';
 import {canPlaceSetupSettlement} from './settlementRules';
 import {rollDice} from './diceRules';
 import {endTurn} from './turnRules';
@@ -39,12 +40,14 @@ export function placeSetupSettlement(state:GameState,playerId:number,vertexId:st
   const check=canPlaceSetupSettlement(state,playerId,vertexId);
   if(!check.ok)return check;
   const buildings=[...state.buildings,{vertexId,playerId,type:'settlement' as const,level:1 as const}];
-  const done=buildings.length>=state.seats.length;
+  const count=(id:number)=>buildings.filter(b=>b.playerId===id).length;
+  const done=state.seats.every(id=>count(id)>=SETUP_SETTLEMENTS_PER_PLAYER);
+  const nextOffset=Array.from({length:state.seats.length},(_,i)=>i+1).find(offset=>count(state.seats[(state.turnIndex+offset)%state.seats.length])<SETUP_SETTLEMENTS_PER_PLAYER)??0;
   return{ok:true,message:done?'Đã đặt đủ khu định cư. Bắt đầu vòng 1.':'Đã đặt khu định cư miễn phí.',state:{
     ...state,buildings,
     phase:done?'playing':'setup',
     round:1,
-    turnIndex:done?0:(state.turnIndex+1)%state.seats.length
+    turnIndex:done?0:(state.turnIndex+nextOffset)%state.seats.length
     ,dice:null,rolled:false
   }};
 }

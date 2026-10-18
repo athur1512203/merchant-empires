@@ -34,7 +34,7 @@ describe('BoardRules',()=>{
 });
 
 describe('SettlementRules + setup',()=>{
-  it('blocks duplicate and adjacent vertices, allows a distant valid vertex',()=>{
+  it('blocks duplicate vertices and allows adjacent vertices',()=>{
     const started=startMatch(createWaitingState(),1000,5);
     expect(started.ok).toBe(true);if(!started.ok)return;
     let state=started.state;
@@ -43,17 +43,17 @@ describe('SettlementRules + setup',()=>{
     const far=state.board.vertices.find(v=>v.id!==first.id&&!first.neighborIds.includes(v.id))!;
     state={...state,buildings:[{vertexId:first.id,playerId:0,type:'settlement',level:1}]};
     expect(canPlaceSettlement(state,first.id,1).ok).toBe(false);
-    expect(canPlaceSettlement(state,near,1).ok).toBe(false);
+    expect(canPlaceSettlement(state,near,1).ok).toBe(true);
     expect(canPlaceSettlement(state,far.id,1).ok).toBe(true);
   });
-  it('places setup settlements P1-P4 then enters playing round 1',()=>{
+  it('places two setup passes P1-P4 then enters playing round 1',()=>{
     const started=startMatch(createWaitingState(),2500,8);
     expect(started.ok).toBe(true);if(!started.ok)return;
     let state=started.state;
     expect(state.phase).toBe('setup');
     expect(state.players.every(p=>p.cash===0&&p.profit===0&&p.resources.metal===0)).toBe(true);
     const taken=new Set<string>();
-    for(let i=0;i<4;i++){
+    for(let i=0;i<8;i++){
       const v=state.board.vertices.find(x=>canPlaceSetupSettlement(state,state.seats[state.turnIndex],x.id).ok)!;
       const r=placeSetupSettlement(state,state.seats[state.turnIndex],v.id);
       expect(r.ok).toBe(true);if(!r.ok)return;
@@ -64,24 +64,24 @@ describe('SettlementRules + setup',()=>{
     expect(state.phase).toBe('playing');
     expect(state.round).toBe(1);
     expect(state.turnIndex).toBe(0);
-    expect(state.buildings).toHaveLength(4);
+    expect(state.buildings).toHaveLength(8);
   });
-  it('rejects a second free settlement for the same company',()=>{
+  it('rejects a third free settlement for the same company',()=>{
     const started=startMatch(createWaitingState(),1000,3);
     expect(started.ok).toBe(true);if(!started.ok)return;
     const v=started.state.board.vertices[10];
     const first=placeSetupSettlement(started.state,0,v.id);
     expect(first.ok).toBe(true);if(!first.ok)return;
-    const hijack={...first.state,turnIndex:0};
+    const hijack={...first.state,turnIndex:0,buildings:[...first.state.buildings,{...first.state.buildings[0],vertexId:first.state.board.vertices[11].id}]};
     const again=placeSetupSettlement(hijack,0,first.state.board.vertices.find(x=>x.id!==v.id)!.id);
     expect(again.ok).toBe(false);
-    expect(again.ok===false&&again.error).toMatch(/1 khu định cư miễn phí/);
+    expect(again.ok===false&&again.error).toMatch(/2 khu định cư miễn phí/);
   });
-  it('caps a company at 3 settlements',()=>{
+  it('caps a company at 4 settlements',()=>{
     const started=startMatch(createWaitingState(),1000,4);
     expect(started.ok).toBe(true);if(!started.ok)return;
     const verts=started.state.board.vertices;
-    const buildings=verts.slice(0,3).map((v,i)=>({vertexId:v.id,playerId:0,type:'settlement' as const,level:1 as const}));
+    const buildings=verts.slice(0,4).map((v,i)=>({vertexId:v.id,playerId:0,type:'settlement' as const,level:1 as const}));
     const isolated=verts.find(v=>!buildings.some(b=>b.vertexId===v.id||(started.state.board.adjacency[b.vertexId]??[]).includes(v.id)));
     const state={...started.state,phase:'playing' as const,buildings};
     expect(canPlaceSettlement(state,isolated?.id??verts[30].id,0).ok).toBe(false);

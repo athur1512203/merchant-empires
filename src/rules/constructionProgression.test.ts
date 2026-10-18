@@ -66,9 +66,9 @@ describe('sequential construction',()=>{
     const next=advance(s,{type:'UPGRADE_FACTORY',playerId:0,vertexId:s.buildings[0].vertexId});
     expect(next.factories[0].usedCapacity).toBe(1);expect(remainingCapacity(next.factories[0])).toBe(1);
   });
-  it('keeps at most three settlements per company',()=>{
+  it('keeps at most four settlements per company',()=>{
     let s=rich();s.buildings=[];
-    for(let n=0;n<3;n++){const v=s.board.vertices.find(v=>!s.buildings.some(b=>b.vertexId===v.id||s.board.adjacency[v.id].includes(b.vertexId)))!;s=advance(s,{type:'BUILD_SETTLEMENT',playerId:0,vertexId:v.id})}
+    for(let n=0;n<4;n++){const v=s.board.vertices.find(v=>!s.buildings.some(b=>b.vertexId===v.id||s.board.adjacency[v.id].includes(b.vertexId)))!;s=advance(s,{type:'BUILD_SETTLEMENT',playerId:0,vertexId:v.id})}
     const v=s.board.vertices.find(v=>!s.buildings.some(b=>b.vertexId===v.id||s.board.adjacency[v.id].includes(b.vertexId)))!;
     expect(applyAction(s,{type:'BUILD_SETTLEMENT',playerId:0,vertexId:v.id}).ok).toBe(false);
   });

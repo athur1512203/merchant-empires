@@ -5,7 +5,8 @@ export type Phase='waiting'|'setup'|'playing'|'finished';
 export const COMPANIES=[{id:0,name:'Iron Works',color:'#e05d44'},{id:1,name:'Timber Guild',color:'#55a87a'},{id:2,name:'Golden Trade',color:'#ddb74d'},{id:3,name:'Ocean Empire',color:'#4c8bd9'}] as const;
 export const RESOURCES:Resource[]=['metal','wood','wheat','cotton'];
 export const PRODUCTS:Product[]=['machinery','rail','furniture','flour','fabric','clothing'];
-export const MAX_SETTLEMENTS_PER_PLAYER=3;
+export const MAX_SETTLEMENTS_PER_PLAYER=4;
+export const SETUP_SETTLEMENTS_PER_PLAYER=2;
 export const HEX_NEIGHBORS:[number,number][]=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 
 export type HexCell={id:string;q:number;r:number;resource:Resource;number:number};

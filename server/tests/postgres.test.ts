@@ -46,37 +46,38 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL integration',()=>{
     expect((await first.gameSnapshot.findUniqueOrThrow({where:{roomId:host.room.id}})).version).toBe(1);
     expect(await first.gameAction.count({where:{roomId:host.room.id}})).toBe(1);
     const tokens=[host.reconnectToken,joinedSecond.reconnectToken,third.reconnectToken,fourth.value.reconnectToken];
-    for(let companyId=0;companyId<4;companyId++){
+    for(let placement=0;placement<8;placement++){
+      const companyId=placement%4;
       const vertexId=await repo.transact(code,room=>room.state.board.vertices.find(v=>canPlaceSetupSettlement(room.state,companyId,v.id).ok)!.id);
-      await a.execute(code,tokens[companyId],`integration-setup-${companyId}`,{expectedVersion:companyId+1,action:{type:'placeSetupSettlement',vertexId}});
+      await a.execute(code,tokens[companyId],`integration-setup-${placement}`,{expectedVersion:placement+1,action:{type:'placeSetupSettlement',vertexId}});
     }
     const outcomes=await Promise.allSettled([
-      a.execute(code,tokens[0],'integration-roll-a',{expectedVersion:5,action:{type:'ROLL_DICE'}}),
-      b.execute(code,tokens[0],'integration-roll-b',{expectedVersion:5,action:{type:'ROLL_DICE'}})
+      a.execute(code,tokens[0],'integration-roll-a',{expectedVersion:9,action:{type:'ROLL_DICE'}}),
+      b.execute(code,tokens[0],'integration-roll-b',{expectedVersion:9,action:{type:'ROLL_DICE'}})
     ]);
     expect(outcomes.filter(x=>x.status==='fulfilled')).toHaveLength(1);
     expect(outcomes.find(x=>x.status==='rejected')).toMatchObject({reason:{code:'STALE_STATE_VERSION'}});
     const winningKey=outcomes[0].status==='fulfilled'?'integration-roll-a':'integration-roll-b';
-    const retry=await b.execute(code,tokens[0],winningKey,{expectedVersion:5,action:{type:'ROLL_DICE'}});
+    const retry=await b.execute(code,tokens[0],winningKey,{expectedVersion:9,action:{type:'ROLL_DICE'}});
     expect(retry.replayed).toBe(true);
     expect(await first.gameAction.count({where:{roomId:host.room.id,actionType:'ROLL_DICE'}})).toBe(1);
     await repo.transact(code,room=>{room.state=openAuction({...room.state,round:3},3);room.version++});
-    await a.execute(code,tokens[0],'integration-bid',{expectedVersion:7,action:{type:'SUBMIT_BID',amount:10}});
+    await a.execute(code,tokens[0],'integration-bid',{expectedVersion:11,action:{type:'SUBMIT_BID',amount:10}});
     expect(await first.auctionBid.count({where:{roomId:host.room.id}})).toBe(1);
     await first.$disconnect();
     const restarted=new RoomService(new PrismaRoomRepository(second));
     const own=await restarted.get(code,tokens[0],true),opponent=await restarted.get(code,tokens[2],true);
-    expect(own).toMatchObject({version:8,state:{auction:{sealedBids:[{amount:10}]}}});
-    expect(opponent).toMatchObject({version:8,state:{auction:{sealedBids:[]}}});
+    expect(own).toMatchObject({version:12,state:{auction:{sealedBids:[{amount:10}]}}});
+    expect(opponent).toMatchObject({version:12,state:{auction:{sealedBids:[]}}});
   },120_000);
 
   it('persists sequential construction and legacy normalization without deleting snapshots',async()=>{
     const host=await a.create({displayName:'Construction regression',companyId:0});roomIds.push(host.room.id);
     const code=host.room.roomCode,guest=await a.join(code,{displayName:'Construction guest',companyId:3});
     await a.execute(code,host.reconnectToken,'construction-start',{expectedVersion:0,targetProfit:999999},true);
-    for(const [who,token] of [[0,host.reconnectToken],[3,guest.reconnectToken]] as const){
+    for(const [who,token] of [[0,host.reconnectToken],[3,guest.reconnectToken],[0,host.reconnectToken],[3,guest.reconnectToken]] as const){
       const room=await repo.transact(code,r=>r);const vertexId=room.state.board.vertices.find(v=>canPlaceSetupSettlement(room.state,who,v.id).ok)!.id;
-      await a.execute(code,token,'construction-setup-'+who,{expectedVersion:room.version,action:{type:'placeSetupSettlement',vertexId}});
+      await a.execute(code,token,'construction-setup-'+room.version,{expectedVersion:room.version,action:{type:'placeSetupSettlement',vertexId}});
     }
     await repo.transact(code,r=>{r.state.rolled=true;r.state.players[0]={...r.state.players[0],cash:10000,resources:{metal:100,wood:100,wheat:100,cotton:100}};r.version++});
     const home=(await repo.transact(code,r=>r.state.buildings[0])).vertexId;

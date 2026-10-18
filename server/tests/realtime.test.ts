@@ -42,17 +42,42 @@ async function fixture(companies=[0,1,2,3]){
   }
   async function started(){
     const ack=await clients[0].timeout(3000).emitWithAck('game:start',{expectedVersion:0,targetProfit:1000,idempotencyKey:'realtime-start'});expect(ack.ok).toBe(true);
-    for(let who=0;who<companies.length;who++){
-      const state=repo.rooms.get(code)!.state,companyId=players[who].room.players.find((p:{id:string})=>p.id===players[who].playerId)!.companyId;
+    for(let who=0;who<companies.length*2;who++){
+      const state=repo.rooms.get(code)!.state,companyId=players[who%companies.length].room.players.find((p:{id:string})=>p.id===players[who%companies.length].playerId)!.companyId;
       const candidates=state.board.vertices.filter(v=>canPlaceSetupSettlement(state,companyId,v.id).ok);
       const vertexId=(candidates.find(v=>v.hexIds.some(id=>state.board.hexes.some(h=>h.id===id&&h.number===4)))??candidates[0]).id;
-      expect((await act(who,{type:'placeSetupSettlement',vertexId})).ok).toBe(true);
+      expect((await act(who%companies.length,{type:'placeSetupSettlement',vertexId})).ok).toBe(true);
     }
-    await expect.poll(()=>clients.every(s=>updates.get(s)?.version===companies.length+1)).toBe(true);
+    await expect.poll(()=>clients.every(s=>updates.get(s)?.version===companies.length*2+1)).toBe(true);
   }
   return {repo,service,app,code,players,clients,updates,connect,act,started,url,sockets};
 }
 describe('Socket.IO multiplayer',()=>{
+  it.each([2,3,4])('synchronizes two setup passes and reconnect with %i members',async(count)=>{
+    const f=await fixture([3,1,0,2].slice(0,count));
+    const room=()=>f.repo.rooms.get(f.code)!;
+    const ack=await f.clients[0].timeout(3000).emitWithAck('game:start',{expectedVersion:0,targetProfit:1000,idempotencyKey:'setup-two-passes'});
+    expect(ack.ok).toBe(true);
+    for(let i=0;i<count*2;i++){
+      const who=i%count,state=room().state;
+      const vertexId=i===1?state.board.vertices.find(v=>v.id===state.buildings[0].vertexId)!.neighborIds[0]:state.board.vertices.find(v=>!state.buildings.some(b=>b.vertexId===v.id))!.id;
+      expect((await f.act((who+1)%count,{type:'placeSetupSettlement',vertexId})).ok).toBe(false);
+      expect((await f.act(who,{type:'placeSetupSettlement',vertexId})).ok).toBe(true);
+      await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===room().version)).toBe(true);
+      for(const socket of f.clients)expect(f.updates.get(socket)!.state.buildings).toEqual(room().state.buildings);
+      if(i===count-1){
+        const before=structuredClone(room().state);
+        f.clients[0].disconnect();f.clients[0]=await f.connect(f.players[0].reconnectToken);
+        expect(f.updates.get(f.clients[0])!.state.buildings).toEqual(before.buildings);
+        expect(f.updates.get(f.clients[0])!.state.turnIndex).toBe(0);
+        expect(room().state).toEqual(before);
+      }
+    }
+    expect(room().state).toMatchObject({phase:'playing',round:1,turnIndex:0});
+    for(const id of room().state.seats)expect(room().state.buildings.filter(b=>b.playerId===id)).toHaveLength(2);
+    expect((await f.act(0,{type:'ROLL_DICE'})).ok).toBe(true);
+  });
+
   it('broadcasts every construction stage and rejects opponent/skip requests on server',async()=>{
     const f=await fixture([0,3]);await f.started();
     const room=()=>f.repo.rooms.get(f.code)!;
@@ -118,9 +143,9 @@ describe('Socket.IO multiplayer',()=>{
     const f=await fixture([3,1,0,2]);await f.started();
     expect((await f.act(1,{type:'ROLL_DICE'}))).toMatchObject({ok:false,error:'ILLEGAL_ACTION'});
     expect((await f.act(0,{type:'ROLL_DICE'})).ok).toBe(true);
-    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===6)).toBe(true);
+    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===10)).toBe(true);
     const state=f.repo.rooms.get(f.code)!.state;
-    expect(state.dice).toEqual([2,2]);expect(state.buildings).toHaveLength(4);
+    expect(state.dice).toEqual([2,2]);expect(state.buildings).toHaveLength(8);
     expect(state.players.filter(p=>Object.values(p.resources).some(n=>n>0)).length).toBeGreaterThan(1);
     for(const socket of f.clients){
       const update=f.updates.get(socket)!;
@@ -137,20 +162,20 @@ describe('Socket.IO multiplayer',()=>{
     const start=await f.clients[1].timeout(3000).emitWithAck('game:start',{expectedVersion:0,targetProfit:1000,idempotencyKey:'unauthorized-start'});
     expect(start).toMatchObject({ok:false,error:'HOST_ONLY'});
     await f.started();
-    const forged=await f.clients[0].timeout(3000).emitWithAck('game:action',{expectedVersion:5,idempotencyKey:'forged-player-id',action:{type:'ROLL_DICE',playerId:1,dice:[6,6]}});
+    const forged=await f.clients[0].timeout(3000).emitWithAck('game:action',{expectedVersion:9,idempotencyKey:'forged-player-id',action:{type:'ROLL_DICE',playerId:1,dice:[6,6]}});
     expect(forged).toMatchObject({ok:false,error:'INVALID_REQUEST'});
     expect((await f.act(0,{type:'BUY_RAW_MATERIAL',resource:'metal',quantity:1})).ok).toBe(false);
-    expect(f.repo.rooms.get(f.code)!.version).toBe(5);
+    expect(f.repo.rooms.get(f.code)!.version).toBe(9);
   });
   it('persists idempotency across reconnect, transfers sole control and restores viewer identity',async()=>{
     const f=await fixture();await f.started();
-    expect((await f.act(0,{type:'ROLL_DICE'},5,'persistent-roll')).ok).toBe(true);
+    expect((await f.act(0,{type:'ROLL_DICE'},9,'persistent-roll')).ok).toBe(true);
     const old=f.clients[0],replaced=socketOnce(old,'session:replaced');
     const refreshed=await f.connect(f.players[0].reconnectToken);await replaced;
     expect(old.connected).toBe(false);
     expect(f.updates.get(refreshed)!.self.companyId).toBe(0);
-    const replay=await refreshed.timeout(3000).emitWithAck('game:action',{expectedVersion:5,idempotencyKey:'persistent-roll',action:{type:'ROLL_DICE'}});
-    expect(replay).toMatchObject({ok:true,appliedVersion:6});expect(f.repo.rooms.get(f.code)!.version).toBe(6);
+    const replay=await refreshed.timeout(3000).emitWithAck('game:action',{expectedVersion:9,idempotencyKey:'persistent-roll',action:{type:'ROLL_DICE'}});
+    expect(replay).toMatchObject({ok:true,appliedVersion:10});expect(f.repo.rooms.get(f.code)!.version).toBe(10);
     refreshed.disconnect();const restored=await f.connect(f.players[0].reconnectToken);
     expect(f.updates.get(restored)!.state.dice).toEqual([2,2]);
   });
@@ -158,15 +183,15 @@ describe('Socket.IO multiplayer',()=>{
     const f=await fixture();await f.started();
     const room=f.repo.rooms.get(f.code)!;room.state=openAuction({...room.state,round:3},3);
     expect((await f.act(0,{type:'SUBMIT_BID',amount:20})).ok).toBe(true);
-    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===6)).toBe(true);
+    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===10)).toBe(true);
     for(let i=0;i<4;i++)expect(f.updates.get(f.clients[i])!.state.auction.sealedBids).toHaveLength(i===0?1:0);
     expect((await f.act(1,{type:'SUBMIT_BID',amount:10})).ok).toBe(true);
-    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===7)).toBe(true);
+    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===11)).toBe(true);
     for(let i=0;i<4;i++)expect(f.updates.get(f.clients[i])!.state.auction.sealedBids.every(b=>b.playerId===i)).toBe(true);
     f.clients[2].disconnect();f.clients[2]=await f.connect(f.players[2].reconnectToken);
     expect(f.updates.get(f.clients[2])!.state.auction.sealedBids).toEqual([]);
     expect((await f.act(2,{type:'SKIP_BID'})).ok).toBe(true);expect((await f.act(3,{type:'SKIP_BID'})).ok).toBe(true);
-    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===9)).toBe(true);
+    await expect.poll(()=>f.clients.every(s=>f.updates.get(s)?.version===13)).toBe(true);
     for(const socket of f.clients)expect(f.updates.get(socket)!.state.contracts.at(-1)).toMatchObject({winnerId:1,winningBid:10});
   });
 });

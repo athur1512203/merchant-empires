@@ -1,9 +1,9 @@
 import type {Commodity,Product,Resource} from '../types';
-import {PRODUCTS} from './types';
+import {PRODUCTS,MAX_SETTLEMENTS_PER_PLAYER} from './types';
 export const STARTING_GOLD=0;
 export const RAW_MATERIALS:Resource[]=['metal','wood','wheat','cotton'];
 export const REFERENCE_RAW_PRICES:Record<Resource,number>={metal:10,wood:10,wheat:10,cotton:10};
-export const MAX_SETTLEMENTS=3;
+export const MAX_SETTLEMENTS=MAX_SETTLEMENTS_PER_PLAYER;
 export const MAX_SETTLEMENT_LEVEL=2;
 export const ROADS_ENABLED=false;
 export type ConstructionCost={gold:number;resources:Partial<Record<Resource,number>>};

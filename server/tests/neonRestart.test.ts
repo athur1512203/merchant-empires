@@ -69,23 +69,34 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     const room=await http<ReturnType<typeof roomView>>(`/${code}`,'GET',undefined,host.reconnectToken);
     expect(room.players).toHaveLength(count);
     await http(`/${code}/start`,'POST',{expectedVersion:0,targetProfit:1000},host.reconnectToken,'neon-start-001');
-    for(let playerId=0;playerId<count;playerId++){
+    for(let placement=0;placement<count*2;placement++){
+      const playerId=placement%count;
       const snapshot=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
       const state=snapshot.state as unknown as GameState;
       const vertexId=state.board.vertices.find(v=>canPlaceSetupSettlement(state,playerId,v.id).ok)!.id;
-      await http(`/${code}/actions`,'POST',{expectedVersion:playerId+1,action:{type:'placeSetupSettlement',vertexId}},players[playerId].reconnectToken,`neon-setup-${playerId}`);
+      await http(`/${code}/actions`,'POST',{expectedVersion:placement+1,action:{type:'placeSetupSettlement',vertexId}},players[playerId].reconnectToken,`neon-setup-${placement}`);
+      if(placement===count-1){
+        const mid=await http(`/${code}/state`,'GET',undefined,host.reconnectToken);
+        expect(mid.state.phase).toBe('setup');expect(mid.state.buildings).toHaveLength(count);expect(mid.state.turnIndex).toBe(0);
+        const midStored=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}}),midPid=child!.pid;
+        await stop();await start(port);expect(child!.pid).not.toBe(midPid);
+        expect(await http(`/${code}/state`,'GET',undefined,host.reconnectToken)).toEqual(mid);
+        expect(await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}})).toEqual(midStored);
+        for(const socket of sockets){updates.delete(socket);socket.emit('room:sync')}
+        await expect.poll(()=>sockets.every(s=>s.connected&&updates.get(s)?.version===mid.version),{timeout:45000}).toBe(true);
+      }
     }
-    await http(`/${code}/actions`,'POST',{expectedVersion:count+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
+    await http(`/${code}/actions`,'POST',{expectedVersion:count*2+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
     const before=await http(`/${code}/state`,'GET',undefined,host.reconnectToken);
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+2),{timeout:30_000}).toBe(true);
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count*2+2),{timeout:30_000}).toBe(true);
     for(const socket of sockets)expect(updates.get(socket)!.state).toEqual(before.state);
     const stored=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
-    expect(stored.version).toBe(count+2);
+    expect(stored.version).toBe(count*2+2);
     expect(stored.state).toMatchObject({phase:'playing',buildings:before.state.buildings,dice:before.state.dice,rolled:true});
     const members=await db.roomPlayer.findMany({where:{roomId:id}});
     expect(members).toHaveLength(count);
     for(let i=0;i<count;i++)expect(members.find(m=>m.id===players[i].playerId)!.reconnectTokenHash).not.toBe(players[i].reconnectToken);
-    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count+2);
+    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count*2+2);
     const persistedRoom=await db.gameRoom.findUniqueOrThrow({where:{id}});
     expect(persistedRoom.status).toBe('PLAYING');
     const oldPid=child!.pid;
@@ -94,24 +105,24 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     const recovered=await http(`/${code}/state`,'GET',undefined,host.reconnectToken);
     await expect.poll(()=>sockets.every(s=>s.connected),{timeout:45_000}).toBe(true);
     for(const socket of sockets){updates.delete(socket);socket.emit('room:sync')}
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+2),{timeout:30_000}).toBe(true);
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count*2+2),{timeout:30_000}).toBe(true);
     for(const socket of sockets)expect(updates.get(socket)!.state).toEqual(before.state);
     expect(recovered).toEqual(before);
     const unchanged=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
     expect(unchanged).toEqual(stored);
-    const replay=await http(`/${code}/actions`,'POST',{expectedVersion:count+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
-    expect(replay).toMatchObject({replayed:true,appliedVersion:count+2,version:count+2});
-    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count+2);
-    await http(`/${code}/actions`,'POST',{expectedVersion:count+2,action:{type:'END_TURN'}},host.reconnectToken,'neon-end-001');
+    const replay=await http(`/${code}/actions`,'POST',{expectedVersion:count*2+1,action:{type:'ROLL_DICE'}},host.reconnectToken,'neon-roll-001');
+    expect(replay).toMatchObject({replayed:true,appliedVersion:count*2+2,version:count*2+2});
+    expect(await db.gameAction.count({where:{roomId:id}})).toBe(count*2+2);
+    await http(`/${code}/actions`,'POST',{expectedVersion:count*2+2,action:{type:'END_TURN'}},host.reconnectToken,'neon-end-001');
     const resumed=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}});
-    expect(resumed.version).toBe(count+3);expect(resumed.state).toMatchObject({turnIndex:1,rolled:false});
-    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count+3),{timeout:30_000}).toBe(true);
+    expect(resumed.version).toBe(count*2+3);expect(resumed.state).toMatchObject({turnIndex:1,rolled:false});
+    await expect.poll(()=>sockets.every(s=>updates.get(s)?.version===count*2+3),{timeout:30_000}).toBe(true);
     const existing=await db.gameRoom.findMany({where:{id:{in:baseline.map(r=>r.id)}},select:{id:true,updatedAt:true,snapshot:{select:{version:true,updatedAt:true}}}});
     expect(existing.sort((a,b)=>a.id.localeCompare(b.id))).toEqual(baseline.sort((a,b)=>a.id.localeCompare(b.id)));
     await stop();
     // Retain this uniquely generated room as reviewable evidence. Never print tokens/state/URL.
-    await writeFile(`server/neon-verification-${count}.json`,JSON.stringify({verifiedAt:new Date().toISOString(),roomCode:code,roomId:id,players:count,actions:count+3,version:count+3,phase:'playing',restart:'PASS',realtimeClients:count,realtimeReconnect:'PASS',exactSnapshotRestored:true,idempotencyAfterRestart:'PASS',existingRoomsUnchanged:baseline.length,tablesVerified:tables.map(t=>t.tablename).sort(),completedMigrations:Number(migrations[0].count)},null,2)+'\n');
-    console.log(`NEON_VERIFIED roomCode=${code} roomId=${id} players=${count} actions=${count+3} version=${count+3} restart=PASS existingRoomsUnchanged=${baseline.length}`);
+    await writeFile(`server/neon-verification-${count}.json`,JSON.stringify({verifiedAt:new Date().toISOString(),roomCode:code,roomId:id,players:count,actions:count*2+3,version:count*2+3,phase:'playing',restart:'PASS',realtimeClients:count,realtimeReconnect:'PASS',exactSnapshotRestored:true,idempotencyAfterRestart:'PASS',existingRoomsUnchanged:baseline.length,tablesVerified:tables.map(t=>t.tablename).sort(),completedMigrations:Number(migrations[0].count)},null,2)+'\n');
+    console.log(`NEON_VERIFIED roomCode=${code} roomId=${id} players=${count} actions=${count*2+3} version=${count*2+3} restart=PASS existingRoomsUnchanged=${baseline.length}`);
   },180_000);
 
   it.each([[2,3],[3,30],[4,33]])('restores a sealed tender with %i players after round %i',async(count,round)=>{
@@ -128,10 +139,11 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('real backend restart with Postg
     const host=await http<Created>('',{displayName:'TASK08-TENDER-HOST',companyId:0}),code=host.room.roomCode,id=host.room.id,players=[host];
     for(let companyId=1;companyId<count;companyId++)players.push(await http<Created>('/'+code+'/join',{displayName:'TASK08-TENDER-'+companyId,companyId}));
     await http('/'+code+'/start',{expectedVersion:0,targetProfit:999999},host.reconnectToken,'task08-start');
-    for(let who=0;who<count;who++){
+    for(let placement=0;placement<count*2;placement++){
+      const who=placement%count;
       const stored=await db.gameSnapshot.findUniqueOrThrow({where:{roomId:id}}),state=stored.state as unknown as GameState;
       const vertexId=state.board.vertices.find(v=>canPlaceSetupSettlement(state,who,v.id).ok)!.id;
-      await http('/'+code+'/actions',{expectedVersion:stored.version,action:{type:'placeSetupSettlement',vertexId}},players[who].reconnectToken,'task08-setup-'+who);
+      await http('/'+code+'/actions',{expectedVersion:stored.version,action:{type:'placeSetupSettlement',vertexId}},players[who].reconnectToken,'task08-setup-'+placement);
     }
     const repo=new PrismaRoomRepository(db);
     await repo.transact(code,r=>{
