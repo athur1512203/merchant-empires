@@ -8,7 +8,7 @@ export function buildingLabelPositions(hexes:Hex[],vertices:Vertex[],buildings:B
   const rectangles=buildings.flatMap(b=>{
     const v=vertices.find(v=>v.id===b.vertexId);if(!v)return[];
     const asset=buildingArtwork(b.level,factories.find(f=>f.vertexId===b.vertexId)?.level,b.playerId),width=asset.frameWidth*displayScale,height=asset.frameHeight*displayScale;
-    return[{left:v.x*zoom-width/2,right:v.x*zoom+width/2,top:v.y*zoom-height,bottom:v.y*zoom+4}];
+    return[{left:v.x*zoom-width/2,right:v.x*zoom+width/2,top:v.y*zoom-height/2,bottom:v.y*zoom+height/2}];
   });
   const inset=Math.max(0,HEX_SIZE*Math.sqrt(3)/2*zoom-radius-1);
   const normals=Array.from({length:6},(_,i)=>({x:Math.cos(i*Math.PI/3),y:Math.sin(i*Math.PI/3)}));

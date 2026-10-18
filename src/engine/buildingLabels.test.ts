@@ -12,7 +12,7 @@ describe('building-aware dice labels',()=>{
     const v:Vertex={id:'bottom',x:0,y:HEX_SIZE,hexIds:[hex.id]};
     const b:Building={vertexId:v.id,playerId:0,type:'settlement',level:1};
     const label=buildingLabelPositions([hex],[v],[b],[],.6,.6).get(hex.id)!;
-    // A 56px building can occupy the full interior at fitted zoom. The label
+    // A centered 48px building can overlap the interior at fitted zoom. The label
     // stays inside its hex and is painted above artwork by Board.
     expect(Math.hypot(label.x,label.y)).toBeLessThan(HEX_SIZE);
     expect(v).toEqual({id:'bottom',x:0,y:HEX_SIZE,hexIds:[hex.id]});
