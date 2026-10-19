@@ -1,6 +1,12 @@
 import {HEX_SIZE} from './hexGrid';
 import type {Hex} from '../types';
 
+type View={x:number;y:number;z:number};
+/** Keep a manually chosen camera centered on the same world point after resize. */
+export function resizeBoardView(view:View,fitted:View,previous:{width:number;height:number},next:{width:number;height:number},manual:boolean):View{
+  return manual?{...view,x:view.x+(next.width-previous.width)/2,y:view.y+(next.height-previous.height)/2}:fitted;
+}
+
 export function fitBoardView(hexes:Pick<Hex,'x'|'y'>[],width:number,height:number){
   if(!hexes.length)return{x:width/2,y:height/2,z:1};
   // Room for settlement hit targets, the map title/tools, and bottom hint.

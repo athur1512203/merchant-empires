@@ -13,7 +13,7 @@ import {useGameStore} from '../store/gameStore';
 const state=()=>useGameStore();
 const html=()=>renderToStaticMarkup(createElement(App));
 describe('in-match layout and existing turn restrictions',()=>{
- beforeEach(()=>{Object.assign(state(),{turn:0,setup:false,ended:false,started:true,rolled:false,auction:{status:'idle',lot:null,bids:[],bidSeat:0}})});
+ beforeEach(()=>{Object.assign(state(),{turn:0,mode:'inspect',setup:false,ended:false,started:true,rolled:false,auction:{status:'idle',lot:null,bids:[],bidSeat:0}})});
  it('has exactly one right sidebar and no history UI or duplicated bottom inventory',()=>{
   const markup=html();expect(markup.match(/<aside/g)).toHaveLength(1);expect(markup).toContain('id="game-sidebar"');
   expect(markup).not.toMatch(/history-btn|history-drawer|bottom-bar|Lịch sử/);
@@ -30,5 +30,13 @@ describe('in-match layout and existing turn restrictions',()=>{
  it('keeps both actions disabled outside the local turn and during bidding',()=>{
   state().turn=1;expect(html()).toMatch(/class="primary dice" disabled=""/);expect(html()).toMatch(/class="end-turn" disabled=""/);
   state().turn=0;state().auction.status='open';expect(html()).toMatch(/class="primary dice" disabled=""/);expect(html()).toMatch(/class="end-turn" disabled=""/);
+ });
+ it('renders small markers only while placing, and only on valid empty vertices',()=>{
+  expect(html()).not.toContain('class="build-marker-dot"');
+  state().mode='settlement';const placing=html();
+  expect(placing).toContain('class="build-marker-dot"');
+  const dots=placing.match(/class="build-marker-dot"/g)?.length;
+  expect(placing.match(/class="build-marker-target"/g)?.length).toBe(dots);
+  state().turn=1;expect(html()).not.toContain('class="build-marker-dot"');
  });
 });

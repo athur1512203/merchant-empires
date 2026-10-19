@@ -1,12 +1,13 @@
 import {contractKind,DELIVERY_ROUNDS,finishedContractsUnlocked} from '../rules/economyConfig';
 import {SettlementControls} from './ConstructionUI';
 import {useState} from 'react';
+import {Market} from './Market';
 import {PRODUCTS} from '../config/economy';
-import {FACTORY_CAPACITY,RAW_MATERIALS,getNpcQuote,manufactureQuote,remainingCapacity,visibleBids} from '../rules';
+import {FACTORY_CAPACITY,manufactureQuote,remainingCapacity,visibleBids} from '../rules';
 import {qty} from '../engine/economyEngine';
 import {formatGold,vi} from '../i18n/vi';
 import {useGameStore,canControl} from '../store/gameStore';
-import type {Commodity,Product,Resource} from '../types';
+import type {Commodity,Product} from '../types';
 
 export function EconomyPanel(){
   const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)??s.players[0],[tab,setTab]=useState<'industry'|'market'|'tender'>('industry');
@@ -48,29 +49,6 @@ function Industry({mine,cap}:{mine:boolean;cap:number}){
       <p>Tổng lô: {quote.gold} vàng · {Object.entries(quote.inputs).map(([c,n])=>`${n} ${vi.commodities[c as Commodity]}`).join(' · ')} → {quote.output} {vi.products[product]} · tồn kho sau: {me.products[product]+(Number.isInteger(batches)&&batches>0?quote.output:0)}</p>
       <div className="qty-row"><input type="number" min={1} step={1} value={batches} onChange={e=>setBatches(Number(e.target.value))}/><button className="primary" disabled={busy||!Number.isInteger(batches)||batches<1||quote.capacity>cap||quote.gold>me.cash} onClick={()=>s.produce(id,product,batches)}>{vi.produce} {quote.output} {vi.products[product]}</button></div>
     </div>}
-  </>;
-}
-
-function Market(){
-  const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)??s.players[0],[item,setItem]=useState<Resource>('metal'),[amount,setAmount]=useState(1);
-  const owned=qty(me,item),n=amount,buy=getNpcQuote(s,item,'buy',n),sell=getNpcQuote(s,item,'sell',n);
-
-  return <>
-    <div className="section-title"><span>{vi.trade}</span><small>{vi.priceMoves}</small></div>
-    <div className="price-list">{(['metal','wood','wheat','cotton'] as const).map(r=>{
-      const ch=s.priceHistory.find(x=>x.resource===r&&x.round===s.round);
-      const prev=s.priceHistory.find(x=>x.resource===r);
-      return <div key={r}><small>{vi.resources[r]}</small><b>{s.resourcePrices[r]}</b><em>{ch?`${ch.percent>=0?'+':''}${ch.percent.toFixed(0)}%`:prev?`${prev.to}`:'—'}</em></div>;
-    })}</div>
-    {s.priceHistory.length>0&&<p>{s.priceHistory.slice(0,4).map(c=>`${vi.resources[c.resource]} vòng ${c.round}: ${c.from}→${c.to} (${c.percent>=0?'+':''}${c.percent.toFixed(0)}%)`).join(' · ')}</p>}
-    {RAW_MATERIALS.map(c=>{
-      const q=qty(me,c);
-      const bp=getNpcQuote(s,c,'buy',1).unitPrice,sp=getNpcQuote(s,c,'sell',1).unitPrice;
-      return <button key={c} className={`pick ${item===c?'active':''}`} onClick={()=>setItem(c)}><b>{vi.commodities[c]}</b><span>Mua {bp} · Bán {sp} · {vi.stock} {q}</span></button>;
-    })}
-    <div className="qty-row"><input type="number" min={1} step={1} value={amount} onChange={e=>setAmount(Number(e.target.value))}/>
-      <div><small>Tổng mua / nhận</small><b>{Number.isInteger(n)&&n>0?`${formatGold(buy.total)} / ${formatGold(sell.total)}`:'—'}</b></div></div>
-    <div className="qty-row"><button className="secondary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(n)||n<1||buy.total>me.cash} onClick={()=>s.buy(item,n)}>Mua từ NPC</button><button className="primary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(n)||n<1||n>owned} onClick={()=>s.sell(item,n)}>{vi.confirmSell}</button></div>
   </>;
 }
 
