@@ -10,15 +10,16 @@ import {formatGold,vi} from '../i18n/vi';
 import type {Player,Resource} from '../types';
 import type {GameState} from '../rules/types';
 import './construction.css';
+import {BuildingIcon} from './BuildingIcon';
 
 export function CostTable({cost,player}:{cost:ConstructionCost;player:Player}){
   const rows=[{name:'Vàng',need:cost.gold,owned:player.cash},...Object.entries(cost.resources).map(([r,n])=>({name:vi.resources[r as Resource],need:n!,owned:player.resources[r as Resource]}))];
-  return <table className="construction-cost"><thead><tr><th>Chi phí</th><th>Cần</th><th>Đang có</th></tr></thead><tbody>{rows.map(r=><tr key={r.name} className={r.owned<r.need?'shortage':''}><th>{r.name}</th><td>{r.need}</td><td>{r.owned}</td></tr>)}</tbody></table>;
+  return <table className="construction-cost"><thead><tr><th>Chi phí</th><th>Cần</th><th>Đang có</th></tr></thead><tbody>{rows.map(r=><tr key={r.name} className={r.owned<r.need?'shortage':'enough'}><th>{r.name}</th><td>{r.need}</td><td>{r.owned}</td></tr>)}</tbody></table>;
 }
 export function ConstructionRecipes({onClose}:{onClose:()=>void}){
   const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)!;
-  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[onClose]);
-  return createPortal(<div className="construction-backdrop" onClick={onClose}><section className="construction-dialog" role="dialog" aria-modal="true" aria-label="Công thức xây dựng" onClick={e=>e.stopPropagation()}><button autoFocus className="construction-close" aria-label="Đóng công thức" onClick={onClose}>×</button><h2>Công thức xây dựng</h2><p>Khu định cư 1 → 2 → Nhà máy 1 → 2 → 3</p><p>Hai khu định cư cấp 1 ban đầu được đặt miễn phí trong setup.</p><p>Tối đa 4 khu định cư/công ty, 1 nhà máy/khu. Nhà máy cần khu định cư cấp 2 và không thay thế khu định cư.</p>{CONSTRUCTION_RECIPES.map(step=><section key={step.label}><h3>{step.label}</h3><p>Sản lượng khai thác: {step.resourceYield} tài nguyên/ô trúng số. Không cộng dồn với công trình nền.</p><CostTable cost={step.cost} player={me}/></section>)}</section></div>,document.body);
+  useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();onClose()}};document.addEventListener('keydown',key,true);return()=>document.removeEventListener('keydown',key,true)},[onClose]);
+  return createPortal(<div className="construction-backdrop" onClick={onClose}><section className="construction-dialog" role="dialog" aria-modal="true" aria-label="Công thức xây dựng" onClick={e=>e.stopPropagation()}><button autoFocus className="construction-close" aria-label="Đóng công thức" onClick={onClose}>×</button><h2>Công thức xây dựng</h2><p>Khu định cư 1 → 2 → Nhà máy 1 → 2 → 3</p><p>Hai khu định cư cấp 1 ban đầu được đặt miễn phí trong setup.</p><p>Tối đa 4 khu định cư/công ty, 1 nhà máy/khu. Nhà máy cần khu định cư cấp 2 và không thay thế khu định cư.</p>{CONSTRUCTION_RECIPES.map((step,index)=><section className="building-recipe" key={step.label}><div className="building-recipe-title"><svg width="48" height="48" viewBox="-24 -24 48 48" aria-hidden="true"><BuildingIcon companyId={me.id} color={me.color} settlementLevel={index===0?1:2} factoryLevel={index>=2?(index-1) as 1|2|3:undefined} selected={false} scale={1}/></svg><h3>{step.label}</h3></div><p>Điều kiện: {index===0?'Đỉnh trống · tối đa 4 khu định cư':index===1?'Khu định cư cấp 1 của bạn':index===2?'Khu định cư cấp 2 của bạn, chưa có nhà máy':'Nhà máy cấp '+(index-2)+' của bạn'}.</p><p>Sản lượng khai thác: {step.resourceYield} tài nguyên/ô trúng số. Không cộng dồn với công trình nền.</p><CostTable cost={step.cost} player={me}/></section>)}</section></div>,document.body);
 }
 export function constructionState(s:ReturnType<typeof useGameStore.getState>):GameState{
   return{...s,roomId:s.room?.id??'local',seed:0,turnIndex:s.turn,targetProfit:s.targetProfit??0};
@@ -29,14 +30,12 @@ export function constructionUnavailable(s:ReturnType<typeof useGameStore.getStat
   return actingOnTurn(constructionState(s),s.localPlayerId);
 }
 export function SettlementControls(){
-  const s=useGameStore(),[recipes,setRecipes]=useState(false),me=s.players.find(p=>p.id===s.localPlayerId)!;
+  const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)!;
   const reason=s.setup?'Giai đoạn chuẩn bị: đặt 2 khu định cư miễn phí trên bản đồ theo lượt.':constructionUnavailable(s)??(s.buildings.filter(b=>b.playerId===me.id).length>=4?'Bạn đã đạt giới hạn 4 khu định cư.':affordability(me,CONSTRUCTION_COSTS.settlement));
   return <div className="construction-controls">
     <button className="secondary" disabled={s.setup} aria-pressed={s.mode==='settlement'} onClick={()=>{if(reason)useGameStore.setState({notice:reason});s.setMode(s.mode==='settlement'?'inspect':'settlement')}}>Xây khu định cư</button>
-    <button className="secondary" onClick={()=>setRecipes(true)}>Công thức xây dựng</button>
     <p>{reason??(s.mode==='settlement'?'Chọn giao điểm sáng trên bản đồ để xem chi phí và xác nhận.':'Chọn công trình của bạn trên bản đồ để nâng cấp.')}</p>
     <p>{s.setup?'Hai khu định cư ban đầu không tốn vàng hoặc nguyên liệu.':'Chi phí: '+formatGold(CONSTRUCTION_COSTS.settlement.gold)+' · 1 kim loại · 2 gỗ · 1 lúa mì.'}</p>{!s.setup&&s.mode==='settlement'&&<CostTable cost={CONSTRUCTION_COSTS.settlement} player={me}/>}
-    {recipes&&<ConstructionRecipes onClose={()=>setRecipes(false)}/>}
   </div>;
 }
 export function ConstructionPopover({vertexId,anchor,onClose}:{vertexId:string;anchor:DOMRect;onClose:()=>void}){
@@ -63,4 +62,9 @@ export function ConstructionPopover({vertexId,anchor,onClose}:{vertexId:string;a
     </>}
     {s.notice&&<p role="status">{s.notice}</p>}
   </section>,document.body);
+}
+
+export function ConstructionRecipesButton(){
+ const [open,setOpen]=useState(false),trigger=useRef<HTMLButtonElement>(null);
+ return <><button ref={trigger} className="secondary construction-recipes-button" aria-haspopup="dialog" onClick={()=>setOpen(true)}>Công thức xây dựng</button>{open&&<ConstructionRecipes onClose={()=>{setOpen(false);trigger.current?.focus()}}/>}</>;
 }

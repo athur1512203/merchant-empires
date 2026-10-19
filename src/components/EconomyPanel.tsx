@@ -1,7 +1,7 @@
 import {contractKind,DELIVERY_ROUNDS,finishedContractsUnlocked} from '../rules/economyConfig';
 import {SettlementControls} from './ConstructionUI';
 import {useState} from 'react';
-import {PRODUCTS,PRODUCT_PRICES} from '../config/economy';
+import {PRODUCTS} from '../config/economy';
 import {FACTORY_CAPACITY,RAW_MATERIALS,getNpcQuote,manufactureQuote,remainingCapacity,visibleBids} from '../rules';
 import {qty} from '../engine/economyEngine';
 import {formatGold,vi} from '../i18n/vi';
@@ -15,11 +15,11 @@ export function EconomyPanel(){
   const mine=building?.playerId===me.id;
   const cap=factory?remainingCapacity(factory):0;
   return <div className="economy">
-    <div className="tabs">{(['industry','market','tender'] as const).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t==='industry'?vi.industry:t==='market'?vi.trade:vi.industrialTender}</button>)}</div>
-    {s.notice&&<div className="notice">{s.notice}<button onClick={s.clearNotice}>{vi.close}</button></div>}
-    {tab==='industry'&&<Industry mine={!!mine} cap={cap}/>}
+    <div className="tabs" role="tablist" aria-label="Chức năng công ty">{(['industry','market','tender'] as const).map(t=><button role="tab" aria-selected={tab===t} aria-controls="economy-content" id={"tab-"+t} key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t==='industry'?vi.industry:t==='market'?vi.trade:vi.industrialTender}</button>)}</div>
+    {s.notice&&<div className="notice" role="status">{s.notice}<button onClick={s.clearNotice}>{vi.close}</button></div>}
+    <div id="economy-content" role="tabpanel" aria-labelledby={"tab-"+tab}>{tab==='industry'&&<Industry mine={!!mine} cap={cap}/>}
     {tab==='market'&&<Market/>}
-    {tab==='tender'&&<Tender/>}
+    {tab==='tender'&&<Tender/>}</div>
   </div>;
 }
 
@@ -54,7 +54,7 @@ function Industry({mine,cap}:{mine:boolean;cap:number}){
 function Market(){
   const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)??s.players[0],[item,setItem]=useState<Resource>('metal'),[amount,setAmount]=useState(1);
   const owned=qty(me,item),n=amount,buy=getNpcQuote(s,item,'buy',n),sell=getNpcQuote(s,item,'sell',n);
-  const last=s.priceHistory[0];
+
   return <>
     <div className="section-title"><span>{vi.trade}</span><small>{vi.priceMoves}</small></div>
     <div className="price-list">{(['metal','wood','wheat','cotton'] as const).map(r=>{
@@ -71,8 +71,6 @@ function Market(){
     <div className="qty-row"><input type="number" min={1} step={1} value={amount} onChange={e=>setAmount(Number(e.target.value))}/>
       <div><small>Tổng mua / nhận</small><b>{Number.isInteger(n)&&n>0?`${formatGold(buy.total)} / ${formatGold(sell.total)}`:'—'}</b></div></div>
     <div className="qty-row"><button className="secondary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(n)||n<1||buy.total>me.cash} onClick={()=>s.buy(item,n)}>Mua từ NPC</button><button className="primary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(n)||n<1||n>owned} onClick={()=>s.sell(item,n)}>{vi.confirmSell}</button></div>
-    {s.trades.filter(t=>t.playerId===me.id).slice(0,4).map(t=><p key={t.id}>Vòng {t.round}: bán {t.amount} {vi.commodities[t.item]} · {formatGold(t.revenue)} · {vi.cogs} {Math.round(t.cogs)}</p>)}
-    {last?null:null}
   </>;
 }
 
@@ -109,12 +107,6 @@ function Tender(){
         {mineC&&<div className="qty-row"><input aria-label={"Số lượng giao "+vi.commodities[c.product]} type="number" min={1} max={remaining} value={qtyD} onChange={e=>setQtyD(Number(e.target.value)||1)}/><button className="primary" disabled={!canControl(s)||s.auction.status==='open'||s.ended||!s.rolled||!Number.isInteger(qtyD)||qtyD<1||qtyD>remaining} onClick={()=>s.deliver(c.id,qtyD)}>{vi.deliverContract}</button></div>}
       </div>;
     })}
-    {s.contracts.filter(c=>c.status==='completed'||c.status==='failed').slice(-3).map(c=><p key={c.id}>{c.name}: {c.status==='completed'?`Hoàn thành · ${formatGold(c.winningBid??0)}`:'Thất bại · phạt 20%'}{c.paid?' · đã thanh toán':''}</p>)}
     {s.ended&&s.winnerId!=null&&<p>{vi.victoryTitle}: {s.players.find(p=>p.id===s.winnerId)?.name}</p>}
   </>;
-}
-
-export function FinanceStrip(){
-  const s=useGameStore(),me=s.players.find(p=>p.id===s.localPlayerId)??s.players[0];
-  return <div className="finance-more"><span>{vi.revenue} {formatGold(me.revenue)}</span><span>{vi.cogs} {formatGold(me.costs)}</span><span>{vi.opex} {formatGold(me.operatingCosts)}</span><span>{vi.capex} {formatGold(me.capitalExpenditure)}</span></div>;
 }
